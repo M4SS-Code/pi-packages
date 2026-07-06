@@ -113,14 +113,14 @@ export default function (pi: ExtensionAPI) {
     name: "llms_txt",
     label: "llms.txt",
     description:
-      "Fetch a domain's llms.txt — a curated map of the site's documentation. " +
+      "Fetch a domain's llms.txt, a curated map of the site's documentation. " +
       "Use before deep-fetching docs sites. Skip for blogs, news, or single-page lookups.",
     promptSnippet:
       "Fetch and cache llms.txt from any domain for LLM-friendly documentation maps",
     promptGuidelines: [
-      "Use llms_txt(domain) to fetch a domain's llms.txt — a curated map of its documentation — before deep-fetching individual pages.",
+      "Use llms_txt(domain) to fetch a domain's llms.txt, a curated map of its documentation, before deep-fetching individual pages.",
       "Skip llms_txt for blogs, news, or single-page lookups; use web_fetch directly.",
-      "Use llms_txt forceRefresh sparingly — only when the cached map may be stale.",
+      "Use llms_txt forceRefresh sparingly, only when the cached map may be stale.",
     ],
     parameters: LlmsTxtParams,
 
