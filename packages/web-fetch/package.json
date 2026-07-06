@@ -1,7 +1,7 @@
 {
   "name": "@m4ss/pi-web-fetch",
   "version": "0.1.0",
-  "description": "Web fetch (HTML→Markdown) tool for pi-coding-agent",
+  "description": "Web-fetch tool for Pi: fetches HTTP(S) URLs, converts HTML to clean Markdown, and pretty-prints JSON responses",
   "license": "MIT",
   "author": "Paolo Barbolini <paolo.barbolini@m4ss.net>",
   "repository": {

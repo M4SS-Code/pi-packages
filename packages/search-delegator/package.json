@@ -1,7 +1,7 @@
 {
   "name": "@m4ss/pi-search-delegator",
   "version": "0.1.0",
-  "description": "Block web search/fetch/llms_txt tools on the main pi model and force delegation to a searcher subagent",
+  "description": "Keep Pi's main context clean: remove web search, fetch, and llms_txt tools from the main model and force delegation to a focused, cheaper searcher subagent",
   "license": "MIT",
   "author": "Paolo Barbolini <paolo.barbolini@m4ss.net>",
   "repository": {

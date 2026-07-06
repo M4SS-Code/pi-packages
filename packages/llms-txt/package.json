@@ -1,7 +1,7 @@
 {
   "name": "@m4ss/pi-llms-txt",
   "version": "0.1.0",
-  "description": "llms.txt cache-first tool — fetch and cache llms.txt from any domain, inject guidance so the model uses it before deep-fetching docs",
+  "description": "Cache-first llms.txt tool for Pi: fetches and caches a site's llms.txt map so the model can survey important pages before deep-fetching individual docs",
   "license": "MIT",
   "author": "Paolo Barbolini <paolo.barbolini@m4ss.net>",
   "repository": {

@@ -1,7 +1,7 @@
 {
   "name": "@m4ss/pi-binary-file-guard",
   "version": "0.1.0",
-  "description": "Block read tool from reading binary files (PDF, archives, executables) by detecting magic bytes",
+  "description": "Block Pi's read tool from loading binary files (PDFs, archives, executables, databases) and suggest the right CLI tool to extract their contents instead",
   "license": "MIT",
   "author": "Paolo Barbolini <paolo.barbolini@m4ss.net>",
   "repository": {

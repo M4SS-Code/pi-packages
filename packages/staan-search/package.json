@@ -1,7 +1,7 @@
 {
   "name": "@m4ss/pi-staan-search",
   "version": "0.1.0",
-  "description": "Staan AI European search extension for pi-coding-agent",
+  "description": "Web-search tool for Pi powered by Staan AI's European search API, with semantically enriched snippets for RAG-style usage, news search, and domain filtering",
   "license": "MIT",
   "author": "Paolo Barbolini <paolo.barbolini@m4ss.net>",
   "repository": {
