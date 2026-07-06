@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    # Per-package tags, e.g. pi-web-fetch@0.1.1 (short name, no @m4ss/ scope).
+    # The tag is only the trigger: `pnpm -r publish` below publishes every
+    # package whose version isn't on the registry yet, so pushing several tags
+    # at once just yields redundant no-op runs.
+    tags: ["*@*"]
+
+permissions:
+  contents: read
+  # Required for npm trusted publishing (OIDC). Each package must have this
+  # repository + workflow configured as a trusted publisher on npmjs.com;
+  # provenance attestations are then generated automatically. Note: npm only
+  # lets you configure trusted publishing on packages that already exist, so
+  # the very first publish of a new package has to be done manually with
+  # `pnpm publish` from a logged-in machine.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm check:all
+      - run: pnpm test:all
+      - run: pnpm check:duplicates
+      # Recursive publish skips packages whose version already exists on the
+      # registry, so re-running a tag or bumping a single package is safe.
+      # --no-git-checks: tag builds run on a detached HEAD.
+      - run: pnpm -r publish --no-git-checks

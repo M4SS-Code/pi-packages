@@ -1,0 +1,57 @@
+{
+  "name": "@m4ss/pi-llms-txt",
+  "version": "0.1.0",
+  "description": "llms.txt cache-first tool — fetch and cache llms.txt from any domain, inject guidance so the model uses it before deep-fetching docs",
+  "license": "MIT",
+  "author": "Paolo Barbolini <paolo.barbolini@m4ss.net>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/M4SS-Code/pi-packages.git",
+    "directory": "packages/llms-txt"
+  },
+  "bugs": {
+    "url": "https://github.com/M4SS-Code/pi-packages/issues"
+  },
+  "homepage": "https://github.com/M4SS-Code/pi-packages/tree/main/packages/llms-txt#readme",
+  "keywords": [
+    "pi",
+    "pi-package",
+    "pi-extension",
+    "llms-txt"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "src",
+    "!src/*.test.ts",
+    "tsconfig.json"
+  ],
+  "main": "./src/index.ts",
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "^1.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "^1.1.0"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test src/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

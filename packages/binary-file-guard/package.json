@@ -1,0 +1,53 @@
+{
+  "name": "@m4ss/pi-binary-file-guard",
+  "version": "0.1.0",
+  "description": "Block read tool from reading binary files (PDF, archives, executables) by detecting magic bytes",
+  "license": "MIT",
+  "author": "Paolo Barbolini <paolo.barbolini@m4ss.net>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/M4SS-Code/pi-packages.git",
+    "directory": "packages/binary-file-guard"
+  },
+  "bugs": {
+    "url": "https://github.com/M4SS-Code/pi-packages/issues"
+  },
+  "homepage": "https://github.com/M4SS-Code/pi-packages/tree/main/packages/binary-file-guard#readme",
+  "keywords": [
+    "pi",
+    "pi-package",
+    "pi-extension",
+    "magic-bytes"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "src",
+    "!src/*.test.ts",
+    "tsconfig.json"
+  ],
+  "main": "./src/index.ts",
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test src/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

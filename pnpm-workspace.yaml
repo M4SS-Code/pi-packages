@@ -1,0 +1,12 @@
+packages:
+  - "packages/*"
+allowBuilds:
+  # esbuild works without its postinstall: the platform binary comes from the
+  # @esbuild/* optional dependency; the script only validates/re-downloads it.
+  esbuild: false
+  # @google/genai preinstall is "echo 'preinstall: no-op'" — nothing to build.
+  "@google/genai": false
+  # koffi ships prebuilt binaries in build/koffi/{platform}/ — no build needed.
+  koffi: false
+  # protobufjs postinstall only warns about version scheme — no build needed.
+  protobufjs: false

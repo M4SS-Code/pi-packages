@@ -1,0 +1,54 @@
+{
+  "name": "@m4ss/pi-search-delegator",
+  "version": "0.1.0",
+  "description": "Block web search/fetch/llms_txt tools on the main pi model and force delegation to a searcher subagent",
+  "license": "MIT",
+  "author": "Paolo Barbolini <paolo.barbolini@m4ss.net>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/M4SS-Code/pi-packages.git",
+    "directory": "packages/search-delegator"
+  },
+  "bugs": {
+    "url": "https://github.com/M4SS-Code/pi-packages/issues"
+  },
+  "homepage": "https://github.com/M4SS-Code/pi-packages/tree/main/packages/search-delegator#readme",
+  "keywords": [
+    "pi",
+    "pi-package",
+    "pi-extension",
+    "subagent"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "src",
+    "!src/*.test.ts",
+    "tsconfig.json"
+  ],
+  "main": "./src/index.ts",
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "pi-subagents": "*"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test src/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

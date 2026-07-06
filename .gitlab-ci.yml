@@ -1,0 +1,22 @@
+stages:
+  - test
+
+node:checks:
+  stage: test
+  image: node:24-alpine3.24
+  before_script:
+    # corepack picks up the pnpm version pinned in package.json's packageManager
+    - corepack enable
+    - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
+    - pnpm install --frozen-lockfile
+  script:
+    - pnpm format:check
+    - pnpm check:all
+    - pnpm test:all
+    - pnpm check:duplicates
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - .pnpm-store/
