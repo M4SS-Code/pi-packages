@@ -132,7 +132,7 @@ export default function (pi: ExtensionAPI) {
       "Use site:domain or -domain in the query to narrow results to or from specific sites.",
       'Keep the default market="fr-fr" for the European route; use market="en-us" only for US-specific needs.',
       "Treat snippets as pointers, not proof: verify claims against the enriched chunks or a web_fetch of the page before relying on them.",
-      "To look up a known package or repo, fetch its registry/API endpoint instead of searching (bare names collide); search only to disambiguate.",
+      "When you already know the URL or identifier, fetch it directly. Search to discover unknowns or disambiguate colliding names (e.g. bare package names).",
     ],
 
     parameters: SearchParams,
