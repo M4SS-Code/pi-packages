@@ -7,7 +7,7 @@ caps response size to keep things manageable.
 ## Features
 
 - Fetches any HTTP/HTTPS URL and converts HTML to clean Markdown (JSON is pretty-printed)
-- Blocks private network addresses (localhost, RFC 1918, link-local); every redirect hop is validated, so a redirect can't bounce into an internal address
+- Blocks private network addresses (localhost, RFC 1918, link-local, CGNAT, IPv6 ULA); every redirect hop is validated, so a redirect can't bounce into an internal address
 - Follows instant meta-refresh redirects (the stub pages static site generators emit)
 - 10s default timeout, overrideable per call; large responses capped at 5MB
 
@@ -28,10 +28,10 @@ web_fetch(url="https://example.com/slow", timeoutMs=20000)
 
 ## Private networks
 
-Blocks private/internal addresses (localhost, RFC 1918, link-local) on all redirect hops (max 5, each validated).
+Blocks private/internal addresses (localhost, RFC 1918, link-local, CGNAT, IPv6 ULA) on all redirect hops (max 5, each validated).
 
 The check runs on the URL's hostname, so it does not defend against DNS
-rebinding — a hostile public hostname that resolves to a private address gets
+rebinding: a hostile public hostname that resolves to a private address gets
 through (that would require a pinned resolver). Treat the guard as protection
 against accidental internal access, not as a hard security boundary; don't
 rely on it to isolate a machine that can reach sensitive internal services.

@@ -6,7 +6,7 @@ model can search the web and get enriched result chunks.
 
 ## Features
 
-- Web and news search with semantic enrichment (extra snippets for RAG-style usage)
+- Web and news search, with semantic enrichment (extra snippets for RAG-style usage)
 - Domain filters via `site:domain` or `-domain.tld` in the query
 - Market selection for language/region-aware results (default: `fr-fr`)
 - Full-content requests that ask Staan for page bodies and reranking
@@ -19,40 +19,31 @@ pi install npm:@m4ss/pi-staan-search
 
 ## Usage
 
-Set your API key:
+Requires `STAAN_API_KEY`:
 
 ```bash
 export STAAN_API_KEY='your_staan_api_key'
 ```
 
-The LLM will automatically see `staan_search` as an available tool. Example calls:
-
-- `staan_search("GDPR NIS2 Europe")` – Web Search for AI using the default `fr-fr` market
-- `staan_search("AI Act", type="news")` – plain news search
-- `staan_search("site:redis.io transactions")` – narrow to a specific domain
-- `staan_search("PostgreSQL performance", minScore=0.2, maxSnippets=5)` – RAG-ready chunks
+```
+staan_search("GDPR NIS2 Europe")
+staan_search("AI Act", type="news")
+staan_search("site:redis.io transactions")
+staan_search("PostgreSQL performance", minScore=0.2, maxSnippets=5)
+```
 
 ## API Key
 
-Get a key at [staan.ai](https://staan.ai) → Developer Console.
+Get a key at the [Staan console](https://staan.ai/console).
 
 - Free tier: 1,000 requests/month
 - Web Search: €1 / 1,000 requests
 - Web Search for AI: €2 / 1,000 requests
 
-## Routing, privacy, and fallback behavior
-
-- `fr-fr` (default) prefers the European/Staan-backed route.
-- `en-us` may use fallback/non-EU infrastructure and domain filters (`site:`) may not work on fallback-routed markets.
-- For compliance-sensitive use, verify Staan's DPA/subprocessors and request EU-only routing.
-
 ## Limits
 
 - Queries are capped at 400 characters (API limit). A note is added if truncated.
-- Domain filters via `site:` syntax may not work when Staan routes through its fallback provider; use `market="fr-fr"` for reliable filtering.
-- Pagination supports offsets of 0, 10, 20, or 30 (10 results per page).
-- Web searches use semantic enrichment by default. Set `extraSnippets=false` for plain Web Search.
-- All API calls use a 10s timeout.
+- Domain filters via `site:` syntax may not work when Staan routes through its fallback provider; `market="fr-fr"` filters reliably.
 
 ## Related packages
 
