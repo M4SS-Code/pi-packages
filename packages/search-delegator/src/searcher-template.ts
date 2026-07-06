@@ -63,7 +63,7 @@ function renderTemplate(config: Config): string {
   const front = [
     "---",
     `name: ${config.searcher_subagent_name}`,
-    "description: Web research specialist — searches the web, fetches pages, and explores docs sites; returns compact findings with source URLs",
+    "description: Web research specialist: searches the web, fetches pages, and explores docs sites; returns compact findings with source URLs",
     `tools: ${grantedTools.join(", ")}`,
   ];
   if (config.searcher_model.trim()) {
@@ -75,9 +75,9 @@ function renderTemplate(config: Config): string {
     "You are a focused web research agent. Return compact, sourced answers.",
     "",
     "## Tools",
-    "- `staan_search` — discover information, find URLs. Use `site:domain` or `-domain` to narrow. For known URLs, use `web_fetch` directly.",
-    "- `web_fetch` — retrieve a known URL's content as Markdown. Prefer raw/API endpoints over HTML. To discover URLs, use `staan_search` first.",
-    "- `llms_txt` — map a docs site's structure before fetching individual pages. Skip for blogs/news.",
+    "- `staan_search`: discover information, find URLs. Use `site:domain` or `-domain` to narrow. For known URLs, use `web_fetch` directly.",
+    "- `web_fetch`: retrieve a known URL's content as Markdown. Prefer raw/API endpoints over HTML. To discover URLs, use `staan_search` first.",
+    "- `llms_txt`: map a docs site's structure before fetching individual pages. Skip for blogs/news.",
     "",
     "## Rules",
     "- Prefer official docs, registries, and primary sources.",
