@@ -28,9 +28,10 @@ const DEFAULT_ORCHESTRATOR_PROMPT = [
   "",
   '    subagent({ agent: "searcher", task: "<concrete request>" })',
   "",
-  'Write specific tasks — e.g. "Find latest stable Diesel version; return version,',
-  'date, source URL." The searcher returns compact findings with URLs. Cite those',
-  "URLs. Batch related lookups into one delegation.",
+  'Write specific tasks. For example: "Research how SvelteKit load functions',
+  "interact with caching and invalidation: cover fetch caching, depends(), and",
+  'invalidate(). Return a summary with source URLs." The searcher returns compact',
+  "findings with URLs. Cite those URLs. Batch related lookups into one delegation.",
 ].join("\n");
 
 export const DEFAULT_CONFIG: Config = {
