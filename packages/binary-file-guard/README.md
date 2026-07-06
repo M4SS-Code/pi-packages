@@ -9,8 +9,11 @@ conversion + `pdftotext` for Office documents.
 
 ## What is blocked
 
-PDFs, archives (ZIP, tar, gzip, 7z, RAR, etc.), executables (ELF, PE), databases
-(SQLite), audio, video, and more; all detected via magic bytes.
+PDFs, archives (ZIP, tar, gzip, bzip2, xz, zstd, LZ4, 7z, RAR, RPM, CPIO),
+executables (ELF, PE, Java serialized objects), databases (SQLite), audio,
+video, and more. Known formats are matched by magic-byte signatures; files
+that match no signature but still look binary (high null-byte or invalid-UTF-8
+ratio) are blocked too.
 
 Supported image formats (PNG, JPEG, GIF, WebP) are not blocked; the LLM can view them directly.
 Unsupported image formats (AVIF, HEIC, BMP, ICO) are blocked with conversion hints.

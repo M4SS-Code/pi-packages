@@ -49,15 +49,16 @@ Config file: `~/.pi/agent/search-delegator.json` (missing fields fall back to de
 | `blocked_tools`          | `["staan_search", "web_fetch", "llms_txt"]` | Tool names removed from the main model and granted to the searcher                                                              |
 | `searcher_subagent_name` | `"searcher"`                                | Subagent name (must match the `.md`)                                                                                            |
 | `searcher_model`         | `""`                                        | Model for the searcher (`provider/model`). Empty = inherit parent's default. Set a cheap model to keep web research inexpensive |
+| `orchestrator_prompt`    | _(built-in web-research guidance)_          | Text sent to the main model at session start, telling it how to delegate to the searcher                                        |
 
 The `searcher.md` template is regenerated whenever the config changes. If you edit
 `searcher.md` by hand, your version is detected and left untouched.
 
 ### Tightening the searcher
 
-`searcher.md` restricts the child to the tools listed in `blocked_tools` (by default
-`tools: staan_search, web_fetch, llms_txt`). To narrow it further, edit
-`~/.pi/agent/agents/searcher.md`, but keep whatever extensions provide those tools loaded.
+`~/.pi/agent/agents/searcher.md` restricts the child to the tools listed in `blocked_tools` (by default
+`tools: staan_search, web_fetch, llms_txt`). To narrow it further, edit that file,
+but keep whatever extensions provide those tools loaded.
 
 ## License
 

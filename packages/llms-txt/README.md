@@ -1,13 +1,10 @@
 # @m4ss/pi-llms-txt
 
-We built this to let the model discover a site's structure before diving into
-individual pages. It fetches and caches `llms.txt` from documentation sites
-using a cache-first strategy.
-
-The [`llms.txt`](https://llmstxt.org) standard is a curated, LLM-friendly map of a
-website's most important content. Not many sites publish one yet, but when they do,
-this extension gives the model a site map before it starts fetching pages. For sites
-that don't publish `llms.txt`, the tool reports it and moves on.
+Fetch and cache a site's [`llms.txt`](https://llmstxt.org), a curated LLM-friendly
+map of a website's most important content, so the model can survey a documentation
+site's structure before deep-fetching individual pages. Few sites publish one yet;
+when a site doesn't, the tool reports that and moves on. Cache-first, so repeat
+lookups are cheap.
 
 ## Notes
 
@@ -22,8 +19,6 @@ pi install npm:@m4ss/pi-llms-txt
 ```
 
 ## Usage
-
-The LLM calls `llms_txt` on its own. You can also invoke it directly:
 
 ```
 llms_txt("www.postgresql.org")
