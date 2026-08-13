@@ -61,6 +61,18 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
           "compat": {
             "thinkingFormat": "zai"
           }
+        },
+        {
+          "id": "deepseek-v4-flash-0731",
+          "name": "DeepSeek V4 Flash",
+          "contextWindow": 1000000,
+          "maxTokens": 384000,
+          "cost": {
+            "input": 0.4,
+            "output": 0.8,
+            "cacheRead": 0.08,
+            "cacheWrite": 0
+          }
         }
       ]
     }
