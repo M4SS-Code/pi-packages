@@ -65,8 +65,9 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
         {
           "id": "deepseek-v4-flash-0731",
           "name": "DeepSeek V4 Flash",
-          "contextWindow": 1000000,
-          "maxTokens": 384000,
+          "reasoning": true,
+          "contextWindow": 256000,
+          "maxTokens": 32768,
           "cost": {
             "input": 0.4,
             "output": 0.8,
