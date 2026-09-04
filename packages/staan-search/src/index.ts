@@ -125,14 +125,12 @@ export default function (pi: ExtensionAPI) {
     label: "Staan Search for AI",
     description:
       "Search the web. Returns ranked results with semantic snippets. " +
-      "For known URLs, use web_fetch directly.",
+      "For known URLs, use web_fetch directly. Cite the result URLs you rely on.",
     promptSnippet: "European Search for AI with semantic enrichment",
     promptGuidelines: [
-      "Use staan_search to research topics and find official docs or primary sources; cite the result URLs you rely on.",
-      "Use site:domain or -domain in the query to narrow results to or from specific sites.",
-      'Keep the default market="fr-fr" for the European route; use market="en-us" only for US-specific needs.',
-      "Treat snippets as pointers, not proof: verify claims against the enriched chunks or a web_fetch of the page before relying on them.",
-      "When you already know the URL or identifier, fetch it directly. Search to discover unknowns or disambiguate colliding names (e.g. bare package names).",
+      "Prefer official docs, registries, and primary sources. Narrow results with site:domain or -domain in the query.",
+      "Treat snippets as pointers, not proof: verify claims against the enriched chunks or a web_fetch before relying on them.",
+      "Use search to discover unknowns or disambiguate colliding names (e.g. bare package names).",
     ],
 
     parameters: SearchParams,

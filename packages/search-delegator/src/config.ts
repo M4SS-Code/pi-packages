@@ -23,15 +23,14 @@ export interface Config {
 const DEFAULT_ORCHESTRATOR_PROMPT = [
   "## Web Research",
   "",
-  "You can search the web, fetch pages, and explore documentation sites via the",
-  "searcher subagent:",
+  "Delegate web search, page fetches, and docs-site exploration to the searcher",
+  "subagent:",
   "",
   '    subagent({ agent: "searcher", task: "<concrete request>" })',
   "",
-  'Write specific tasks. For example: "Research how SvelteKit load functions',
-  "interact with caching and invalidation: cover fetch caching, depends(), and",
-  'invalidate(). Return a summary with source URLs." The searcher returns compact',
-  "findings with URLs. Cite those URLs. Batch related lookups into one delegation.",
+  "Write specific, self-contained tasks (what to find and what to return).",
+  "The searcher returns compact findings with source URLs; cite those URLs and",
+  "batch related lookups into one delegation.",
 ].join("\n");
 
 export const DEFAULT_CONFIG: Config = {

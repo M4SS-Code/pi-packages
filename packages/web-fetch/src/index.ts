@@ -61,13 +61,11 @@ export default function (pi: ExtensionAPI) {
     label: "Web Fetch",
     description:
       "Fetch a URL and return its content as Markdown (default) or HTML. " +
-      "Prefer raw/API endpoints over rendered HTML. To discover URLs, use staan_search first.",
+      "Prefer raw/API endpoints over rendered HTML. To discover URLs, use staan_search first. Cite the URL you fetch.",
     promptSnippet: "Fetch and convert a web page to Markdown",
     promptGuidelines: [
-      "Use web_fetch to retrieve any HTTP/HTTPS URL, whether the user gave it, you already know it, or staan_search returned it, and cite the fetched URL in your answer.",
-      "Prefer official structured APIs, raw file URLs, or export endpoints over rendered HTML when they carry the same content; for GitHub use raw.githubusercontent.com (file contents) and the GitHub API (repo metadata).",
-      "When you know a package or repo name, fetch its registry/API endpoint directly (crates.io, npm, PyPI, GitHub API), choosing the most specific resource to avoid pulling unneeded data.",
-      "Fetch rendered HTML only when presentation matters or no structured/raw endpoint exists; keep the default format=markdown and use html only when you need raw markup.",
+      "Prefer the most specific raw endpoint for known targets: GitHub uses raw.githubusercontent.com (file contents) and the GitHub API (repo metadata); packages use their registry (npm, PyPI, crates.io, GitHub API).",
+      "Keep format=markdown by default; use format=html only when you need raw markup or the presentation matters.",
     ],
     parameters: WebFetchParams,
 
