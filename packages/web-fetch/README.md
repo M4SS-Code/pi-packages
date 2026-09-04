@@ -7,7 +7,7 @@ caps response size to keep things manageable.
 ## Features
 
 - Fetches any HTTP/HTTPS URL and converts HTML to clean Markdown (JSON is pretty-printed)
-- Blocks private network addresses (localhost, RFC 1918, link-local, CGNAT, IPv6 ULA); every redirect hop is validated, so a redirect can't bounce into an internal address
+- Blocks private network addresses by hostname (localhost, RFC 1918, link-local, CGNAT, IPv6 ULA); the initial URL and every redirect hop are re-validated — see [Private networks](#private-networks) for scope and the DNS-rebinding limitation
 - Follows instant meta-refresh redirects (the stub pages static site generators emit)
 - 10s default timeout, overrideable per call; large responses capped at 5MB
 
@@ -28,13 +28,20 @@ web_fetch(url="https://example.com/slow", timeoutMs=20000)
 
 ## Private networks
 
-Blocks private/internal addresses (localhost, RFC 1918, link-local, CGNAT, IPv6 ULA) on all redirect hops (max 5, each validated).
+The initial URL and every redirect hop (HTTP 3xx or meta-refresh; max 5, each
+re-validated) is checked by hostname and refused when it names a private or
+internal address: `localhost` and other single-label hostnames, RFC 1918,
+loopback, link-local (including the 169.254/16 cloud-metadata range), CGNAT,
+and IPv6 loopback/link-local/ULA. Numeric host forms are normalized first, so
+`http://0x7f000001/` and `http://2130706433/` are refused too.
 
-The check runs on the URL's hostname, so it does not defend against DNS
-rebinding: a hostile public hostname that resolves to a private address gets
-through (that would require a pinned resolver). Treat the guard as protection
-against accidental internal access, not as a hard security boundary; don't
-rely on it to isolate a machine that can reach sensitive internal services.
+The check runs on the URL's _hostname_, not on the resolved address, so it
+does not defend against DNS rebinding: a hostile public hostname that resolves
+to a private address gets through (closing that would require a pinned
+resolver that validates and uses the resolved IP). Treat the guard as
+protection against accidental internal access, not as a hard security
+boundary; don't rely on it to isolate a machine that can reach sensitive
+internal services.
 
 ## Related packages
 
