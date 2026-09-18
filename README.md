@@ -74,6 +74,19 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
             "cacheRead": 0.08,
             "cacheWrite": 0
           }
+        },
+        {
+          "id": "qwen3.8-27b",
+          "name": "Qwen 3.8 27B",
+          "reasoning": true,
+          "contextWindow": 262144,
+          "maxTokens": 32768,
+          "cost": {
+            "input": 0.6,
+            "output": 3.3,
+            "cacheRead": 0.12,
+            "cacheWrite": 0
+          }
         }
       ]
     }
