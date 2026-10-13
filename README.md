@@ -47,10 +47,10 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
       "apiKey": "$SCW_SECRET_KEY",
       "models": [
         {
-          "id": "glm-5.2",
-          "name": "GLM 5.2",
+          "id": "glm-5.3",
+          "name": "GLM 5.3",
           "reasoning": true,
-          "contextWindow": 256000,
+          "contextWindow": 262144,
           "maxTokens": 16384,
           "cost": {
             "input": 1.8,
@@ -63,15 +63,15 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
           }
         },
         {
-          "id": "deepseek-v4-flash-0731",
-          "name": "DeepSeek V4 Flash",
+          "id": "deepseek-v4.1-flash",
+          "name": "DeepSeek V4.1 Flash",
           "reasoning": true,
-          "contextWindow": 256000,
+          "contextWindow": 262144,
           "maxTokens": 32768,
           "cost": {
-            "input": 0.4,
-            "output": 0.8,
-            "cacheRead": 0.08,
+            "input": 0.6,
+            "output": 1.8,
+            "cacheRead": 0.12,
             "cacheWrite": 0
           }
         },
