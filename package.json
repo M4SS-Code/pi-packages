@@ -1,7 +1,7 @@
 {
   "name": "pi-packages",
   "private": true,
-  "packageManager": "pnpm@11.10.0",
+  "packageManager": "pnpm@12.14.0",
   "scripts": {
     "check:all": "pnpm -r run check",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
@@ -10,7 +10,7 @@
     "check:duplicates": "sh scripts/check-duplicated-helpers.sh"
   },
   "devDependencies": {
-    "prettier": "^3.9.4",
-    "tsx": "^4.23.0"
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15"
   }
 }
