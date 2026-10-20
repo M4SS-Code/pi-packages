@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ forgejo.workflow }}-${{ forgejo.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    # The job containers on these runners are privileged, so never run them
+    # for code from a fork.
+    if: forgejo.event_name != 'pull_request' || forgejo.event.pull_request.head.repo.full_name == forgejo.repository
+    name: format / node ${{ matrix.node-version }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        node-version: [22, 24, 26]
+    steps:
+      - name: Checkout
+        uses: https://code.m4ss.net/Actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node.js
+        uses: https://code.m4ss.net/Actions/setup-node@94196ee1d15439c1b6651cd87ef14e88ec435966 # main
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm format:check
+        run: pnpm format:check
+
+  check:
+    if: forgejo.event_name != 'pull_request' || forgejo.event.pull_request.head.repo.full_name == forgejo.repository
+    name: check / node ${{ matrix.node-version }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        node-version: [22, 24, 26]
+    steps:
+      - name: Checkout
+        uses: https://code.m4ss.net/Actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node.js
+        uses: https://code.m4ss.net/Actions/setup-node@94196ee1d15439c1b6651cd87ef14e88ec435966 # main
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm check:all
+        run: pnpm check:all
+
+  test:
+    if: forgejo.event_name != 'pull_request' || forgejo.event.pull_request.head.repo.full_name == forgejo.repository
+    name: test / node ${{ matrix.node-version }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        node-version: [22, 24, 26]
+    steps:
+      - name: Checkout
+        uses: https://code.m4ss.net/Actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node.js
+        uses: https://code.m4ss.net/Actions/setup-node@94196ee1d15439c1b6651cd87ef14e88ec435966 # main
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm test:all
+        run: pnpm test:all
+
+  duplicates:
+    if: forgejo.event_name != 'pull_request' || forgejo.event.pull_request.head.repo.full_name == forgejo.repository
+    name: duplicates / node ${{ matrix.node-version }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        node-version: [22, 24, 26]
+    steps:
+      - name: Checkout
+        uses: https://code.m4ss.net/Actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node.js
+        uses: https://code.m4ss.net/Actions/setup-node@94196ee1d15439c1b6651cd87ef14e88ec435966 # main
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm check:duplicates
+        run: pnpm check:duplicates
