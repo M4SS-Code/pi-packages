@@ -61,7 +61,7 @@ export default function (pi: ExtensionAPI) {
     label: "Web Fetch",
     description:
       "Fetch a URL and return its content as Markdown (default) or HTML. " +
-      "Prefer raw/API endpoints over rendered HTML. To discover URLs, use staan_search first. Cite the URL you fetch.",
+      "To discover URLs, use staan_search first.",
     promptSnippet: "Fetch and convert a web page to Markdown",
     promptGuidelines: [
       "Prefer the most specific raw endpoint for known targets: GitHub uses raw.githubusercontent.com (file contents) and the GitHub API (repo metadata); packages use their registry (npm, PyPI, crates.io, GitHub API).",
