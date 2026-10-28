@@ -34,6 +34,19 @@ describe("syncSearcherTemplate", () => {
     assert.match(content, /^tools: staan_search, web_fetch, llms_txt$/m);
   });
 
+  it("asks for the Answer / Evidence / Gaps output contract", () => {
+    const config = { ...DEFAULT_CONFIG };
+    syncSearcherTemplate(config);
+    const content = readFileSync(
+      searcherPath(config.searcher_subagent_name),
+      "utf8",
+    );
+    assert.match(
+      content,
+      /\*\*Answer\*\*[\s\S]*\*\*Evidence\*\*[\s\S]*\*\*Gaps\*\*/,
+    );
+  });
+
   it("is a no-op when nothing changed", () => {
     const config = { ...DEFAULT_CONFIG };
     syncSearcherTemplate(config);

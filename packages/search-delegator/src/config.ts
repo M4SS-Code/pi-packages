@@ -29,8 +29,9 @@ const DEFAULT_ORCHESTRATOR_PROMPT = [
   '    subagent({ agent: "searcher", task: "<concrete request>" })',
   "",
   "Write specific, self-contained tasks (what to find and what to return).",
-  "The searcher returns compact findings with source URLs; cite those URLs and",
-  "batch related lookups into one delegation.",
+  "The searcher answers in three sections: Answer, Evidence (claim, URL, quote),",
+  "and Gaps. Check the quoted evidence before relying on a claim, cite the",
+  "URLs, and batch related lookups into one delegation.",
 ].join("\n");
 
 export const DEFAULT_CONFIG: Config = {

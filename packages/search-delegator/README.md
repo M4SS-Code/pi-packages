@@ -4,8 +4,10 @@ We designed this to keep your main model's context clean. The extension removes
 `staan_search`, `web_fetch`, and `llms_txt` from the main model and forces it to
 delegate web research to a focused **searcher** subagent instead.
 
-The searcher runs headless, does the web work, and returns a compact summary with
-source URLs, keeping the main context uncluttered. This also lets you run the
+The searcher runs headless, does the web work, and returns a compact answer in
+three sections: **Answer**, **Evidence** (each key claim with its source URL and a
+short quote, so the main model can check it), and **Gaps**. This keeps the main
+context uncluttered. This also lets you run the
 searcher on a cheaper model.
 
 Delegating web work to the searcher:

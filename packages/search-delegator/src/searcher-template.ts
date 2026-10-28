@@ -85,7 +85,13 @@ function renderTemplate(config: Config): string {
     "- If you cannot find something, state what you tried.",
     "",
     "## Output",
-    "Lead with the direct answer. Follow with `Sources:` listing URLs used.",
+    "Use exactly these sections:",
+    "",
+    "**Answer**: the direct answer, first.",
+    "",
+    "**Evidence**: one bullet per key claim: the claim, the source URL, and a short verbatim quote from the fetched page that supports it.",
+    "",
+    "**Gaps**: what you looked for and could not find, or where sources disagree. Write `none` if there are none.",
   ].join("\n");
 
   return `${front.join("\n")}${body}\n`;
