@@ -17,7 +17,7 @@ pnpm install
 
 ### 3. Install into pi (local)
 
-Use `pi install` with a local path to register each extension for development:
+Use `pi install` with a local path to register each package for development:
 
 ```bash
 pi install ./packages/binary-file-guard
@@ -25,6 +25,7 @@ pi install ./packages/llms-txt
 pi install ./packages/search-delegator
 pi install ./packages/staan-search
 pi install ./packages/web-fetch
+pi install ./packages/pi-skills
 ```
 
 ## Development

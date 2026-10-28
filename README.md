@@ -1,12 +1,14 @@
-# Pi Extensions
+# Pi Packages
 
-Custom extensions for [pi](https://github.com/earendil-works/pi).
+Custom extensions and skills for [pi](https://github.com/earendil-works/pi).
 
 We built these for our own way of using Pi; we focus on keeping the model's context clean and giving it tools that do one thing well.
 
 > Want to contribute? Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening issues or PRs.
 
 ## Packages
+
+### Extensions
 
 | Package                                            | Description                                                           |
 | -------------------------------------------------- | --------------------------------------------------------------------- |
@@ -16,16 +18,26 @@ We built these for our own way of using Pi; we focus on keeping the model's cont
 | [`staan-search`](packages/staan-search/)           | Staan AI European search tool for pi                                  |
 | [`web-fetch`](packages/web-fetch/)                 | Fetch web pages and convert HTML to Markdown                          |
 
+### Skills
+
+| Package                            | Description                                    |
+| ---------------------------------- | ---------------------------------------------- |
+| [`pi-skills`](packages/pi-skills/) | Open-source Pi skills (`commit`, more to come) |
+
 ## Setup
 
-Install each extension with `pi install`:
+Install each package with `pi install`:
 
 ```bash
+# Extensions
 pi install npm:@m4ss/pi-binary-file-guard
 pi install npm:@m4ss/pi-llms-txt
 pi install npm:@m4ss/pi-search-delegator
 pi install npm:@m4ss/pi-staan-search
 pi install npm:@m4ss/pi-web-fetch
+
+# Skills
+pi install npm:@m4ss/pi-skills
 ```
 
 The `search-delegator` package also requires `pi-subagents`:
