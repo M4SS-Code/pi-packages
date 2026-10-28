@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  acceptHeader,
   assertPublicTarget,
   charsetFromContentType,
   classifyContentType,
@@ -493,5 +494,41 @@ describe("preprocessHtml + htmlToMarkdown", () => {
       "https://example.com/",
     );
     assert.match(htmlToMarkdown(doc), /```rust\nfn main\(\) \{\}\n```/);
+  });
+});
+
+describe("markdown negotiation", () => {
+  it("prefers text/markdown only in markdown mode", () => {
+    assert.match(acceptHeader("markdown"), /^text\/markdown,text\/html/);
+    assert.doesNotMatch(acceptHeader("html"), /text\/markdown/);
+  });
+
+  it("passes a text/markdown response through unconverted", async () => {
+    const original = globalThis.fetch;
+    let accept: string | null = null;
+    globalThis.fetch = (async (
+      _input: URL | RequestInfo,
+      init?: RequestInit,
+    ) => {
+      accept = new Headers(init?.headers).get("accept");
+      const response = new Response("# Title\n\n<b>kept</b>\n", {
+        headers: { "content-type": "text/markdown; charset=utf-8" },
+      });
+      Object.defineProperty(response, "url", {
+        value: "https://docs.example/page",
+      });
+      return response;
+    }) as typeof fetch;
+    try {
+      const result = await fetchUrl({
+        url: "https://docs.example/page",
+        userAgent: "test",
+      });
+      assert.match(accept ?? "", /^text\/markdown/);
+      assert.equal(result.format, "markdown");
+      assert.match(result.output, /# Title\n\n<b>kept<\/b>/);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });

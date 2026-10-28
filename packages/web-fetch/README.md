@@ -7,6 +7,7 @@ caps response size to keep things manageable.
 ## Features
 
 - Fetches any HTTP/HTTPS URL and converts HTML to clean Markdown (JSON is pretty-printed)
+- Asks for `text/markdown` first, so sites that publish Markdown for agents skip the HTML conversion
 - Blocks private network addresses by hostname (localhost, RFC 1918, link-local, CGNAT, IPv6 ULA); the initial URL and every redirect hop are re-validated — see [Private networks](#private-networks) for scope and the DNS-rebinding limitation
 - Follows instant meta-refresh redirects (the stub pages static site generators emit)
 - 10s default timeout, overrideable per call; large responses capped at 5MB

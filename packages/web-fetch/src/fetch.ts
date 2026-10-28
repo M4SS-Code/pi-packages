@@ -442,6 +442,19 @@ export interface FetchUrlResult {
 // Fetch pipeline
 // ---------------------------------------------------------------------------
 
+const ACCEPT_BASE =
+  "text/html,application/xhtml+xml,text/plain,application/json,application/*+json,application/xml,application/*+xml;q=0.9,*/*;q=0.1";
+
+/**
+ * In markdown mode, ask for text/markdown first: servers that publish
+ * Markdown for agents return it directly, which is cleaner than any HTML
+ * conversion (text/* bodies pass through unchanged). HTML mode keeps
+ * preferring markup.
+ */
+export function acceptHeader(format: "markdown" | "html"): string {
+  return format === "markdown" ? `text/markdown,${ACCEPT_BASE}` : ACCEPT_BASE;
+}
+
 export async function fetchUrl(
   params: FetchUrlParams,
 ): Promise<FetchUrlResult> {
@@ -493,8 +506,7 @@ export async function fetchUrl(
           signal: timeout.signal,
           headers: {
             "User-Agent": userAgent,
-            Accept:
-              "text/html,application/xhtml+xml,text/plain,application/json,application/*+json,application/xml,application/*+xml;q=0.9,*/*;q=0.1",
+            Accept: acceptHeader(format),
           },
         });
       } catch (e: unknown) {
