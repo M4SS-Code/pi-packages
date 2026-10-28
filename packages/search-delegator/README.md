@@ -19,6 +19,9 @@ subagent({
 })
 ```
 
+The main model is told to split independent questions into separate searcher
+calls and run them in parallel.
+
 `curl`, `wget`, and other shell commands are **not** blocked.
 
 ## Related packages

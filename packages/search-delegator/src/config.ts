@@ -30,8 +30,11 @@ const DEFAULT_ORCHESTRATOR_PROMPT = [
   "",
   "Write specific, self-contained tasks (what to find and what to return).",
   "The searcher answers in three sections: Answer, Evidence (claim, URL, quote),",
-  "and Gaps. Check the quoted evidence before relying on a claim, cite the",
-  "URLs, and batch related lookups into one delegation.",
+  "and Gaps. Check the quoted evidence before relying on a claim and cite the",
+  "URLs.",
+  "",
+  "Split independent questions into separate searcher calls and issue them in",
+  "parallel; keep closely related questions together in one task.",
 ].join("\n");
 
 export const DEFAULT_CONFIG: Config = {
