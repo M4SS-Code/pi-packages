@@ -6,10 +6,10 @@ model can search the web and get enriched result chunks.
 
 ## Features
 
-- Web and news search, with semantic enrichment (extra snippets for RAG-style usage)
+- Web and news search; web results always carry semantic enrichment (extra snippets for RAG-style usage)
 - Domain filters via `site:domain` or `-domain.tld` in the query
 - Market selection for language/region-aware results (default: `fr-fr`)
-- Full-content requests that ask Staan for page bodies and reranking
+- A deliberately small schema (`query`, `market`, `type`, `offset`) so smaller models don't misuse tuning knobs
 
 ## Install
 
@@ -29,7 +29,7 @@ export STAAN_API_KEY='your_staan_api_key'
 staan_search("GDPR NIS2 Europe")
 staan_search("AI Act", type="news")
 staan_search("site:redis.io transactions")
-staan_search("PostgreSQL performance", minScore=0.2, maxSnippets=5)
+staan_search("PostgreSQL performance", market="en-us")
 ```
 
 ## API Key

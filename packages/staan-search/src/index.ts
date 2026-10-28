@@ -2,8 +2,8 @@
  * @m4ss/pi-staan-search
  *
  * Registers a `staan_search` tool powered by the Staan.ai Web Search for AI API.
- * Supports web and news endpoints with semantic enrichment, full-content reranking,
- * and dork-style domain filtering (site:domain, -domain.tld).
+ * Supports web and news endpoints with semantic enrichment and dork-style
+ * domain filtering (site:domain, -domain.tld).
  * Requires STAAN_API_KEY environment variable.
  */
 
@@ -22,12 +22,7 @@ import {
   SUPPORTED_MARKETS,
   searchStaan,
 } from "./staan-client";
-import {
-  extractDorks,
-  sanitizeQuery,
-  normalizeOffset,
-  clamp,
-} from "./query-parser";
+import { extractDorks, sanitizeQuery, normalizeOffset } from "./query-parser";
 import { compactText } from "./utils";
 
 // ---------------------------------------------------------------------------
@@ -47,7 +42,6 @@ interface SearchDetails {
   outputLines: number;
   truncatedBy?: string;
   resultsPath?: string;
-  jsonPath?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +61,12 @@ function safeFileId(toolCallId: string): string {
   return toolCallId.replace(/[^\w.-]/g, "_");
 }
 
+// Semantic enrichment for web results. Fixed rather than exposed as
+// parameters: models rarely tune these well, and every optional knob is one
+// more thing a smaller model can fill in wrongly.
+const ENRICHMENT_MIN_SCORE = 0.2;
+const ENRICHMENT_MAX_SNIPPETS = 5;
+
 // ---------------------------------------------------------------------------
 // Tool parameters — StringEnum per pi docs for Google API compatibility
 // ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ const SearchParams = Type.Object({
   market: Type.Optional(
     StringEnum(SUPPORTED_MARKETS, {
       description:
-        "Language/region. Default: fr-fr. Use en-us for US-specific results.",
+        "Language/region of the results. Default: fr-fr (French results). Match the query's language, e.g. en-us for English queries.",
     }),
   ),
   type: Type.Optional(
@@ -87,28 +87,6 @@ const SearchParams = Type.Object({
   offset: Type.Optional(
     Type.Number({
       description: "Pagination offset (0, 10, 20, or 30)",
-    }),
-  ),
-  extraSnippets: Type.Optional(
-    Type.Boolean({
-      description:
-        "Enable semantic enrichment snippets. Default: true for web. Set false for plain search.",
-    }),
-  ),
-  minScore: Type.Optional(
-    Type.Number({
-      description: "Minimum enrichment score (0–1). Default: 0.2",
-    }),
-  ),
-  maxSnippets: Type.Optional(
-    Type.Number({
-      description: "Max extra snippets per result. Default: 5",
-    }),
-  ),
-  fullContent: Type.Optional(
-    StringEnum(["markdown", "html"] as const, {
-      description:
-        "Request full page body (markdown or html). Triggers reranking.",
     }),
   ),
 });
@@ -140,16 +118,7 @@ export default function (pi: ExtensionAPI) {
     // ---------------------------------------------------------------------------
 
     execute: async (toolCallId, params, signal, _onUpdate, _ctx) => {
-      const {
-        query,
-        market = "fr-fr",
-        type = "web",
-        offset,
-        extraSnippets,
-        minScore,
-        maxSnippets,
-        fullContent,
-      } = params;
+      const { query, market = "fr-fr", type = "web", offset } = params;
 
       const apiKey = process.env.STAAN_API_KEY;
       if (!apiKey) {
@@ -187,48 +156,16 @@ export default function (pi: ExtensionAPI) {
       const snappedOffset = normalizeOffset(offset, hygieneNotes);
 
       const endpoint = type === "news" ? "news" : "web";
-      const wantsFullContent =
-        fullContent === "markdown" || fullContent === "html";
-      const requestExtraSnippets =
-        endpoint === "web" && extraSnippets !== false;
-      const usesSearchForAi =
-        requestExtraSnippets || (endpoint === "web" && wantsFullContent);
-
-      if (endpoint === "news" && (extraSnippets || wantsFullContent)) {
-        hygieneNotes.push(
-          "Search for AI enrichment is only available for web search; ignoring enrichment options for news",
-        );
-      }
-
-      let useMinScore = minScore;
-      let useMaxSnippets = maxSnippets;
-      if (usesSearchForAi) {
-        if (useMinScore === undefined) useMinScore = 0.2;
-        if (useMaxSnippets === undefined) useMaxSnippets = 5;
-      }
-      if (useMinScore !== undefined) {
-        const clamped = clamp(useMinScore, 0, 1);
-        if (clamped !== useMinScore)
-          hygieneNotes.push(`minScore clamped to ${clamped} [0,1]`);
-        useMinScore = clamped;
-      }
-      if (useMaxSnippets !== undefined) {
-        const clamped = Math.round(clamp(useMaxSnippets, 1, 10));
-        if (clamped !== useMaxSnippets)
-          hygieneNotes.push(`maxSnippets clamped to ${clamped} [1,10]`);
-        useMaxSnippets = clamped;
-      }
 
       // -- Build request --
       const request: StaanRequest = { q, market };
       if (snappedOffset !== undefined) request.offset = snappedOffset;
-      if (requestExtraSnippets) request.extra_snippets = true;
-      if (usesSearchForAi && useMinScore !== undefined)
-        request.min_score = useMinScore;
-      if (usesSearchForAi && useMaxSnippets !== undefined)
-        request.max_snippets = useMaxSnippets;
-      if (endpoint === "web" && wantsFullContent)
-        request.full_content = fullContent;
+      // Search for AI enrichment is only available for web search
+      if (endpoint === "web") {
+        request.extra_snippets = true;
+        request.min_score = ENRICHMENT_MIN_SCORE;
+        request.max_snippets = ENRICHMENT_MAX_SNIPPETS;
+      }
       if (useInclude) request.include_domains = useInclude;
       if (useExclude) request.exclude_domains = useExclude;
 
@@ -265,8 +202,6 @@ export default function (pi: ExtensionAPI) {
         content = `No results returned for ${JSON.stringify(q)}.`;
       }
 
-      // fullContent body is not inlined — API structure may change; raw body lives in the JSON dump
-
       if (hygieneNotes.length) {
         content += `\n\nNotes:\n- ${hygieneNotes.join("\n- ")}`;
       }
@@ -282,7 +217,6 @@ export default function (pi: ExtensionAPI) {
       const truncation = truncateHead(content);
       let note = `\n\n---\nOutput lines: ${content.split("\n").length}. Displayed lines: ${truncation.outputLines}. Truncated: ${truncation.truncated ? "yes" : "no"}.`;
       let resultsPath: string | undefined;
-      let jsonPath: string | undefined;
       if (truncation.truncated) {
         resultsPath = join(
           await getSessionTmpDir(),
@@ -290,17 +224,6 @@ export default function (pi: ExtensionAPI) {
         );
         await writeFile(resultsPath, content, "utf8");
         note += ` Full output: ${resultsPath}`;
-      }
-
-      // Persist raw JSON only when it carries data the text output doesn't:
-      // fullContent page bodies are never inlined, so the dump is their home.
-      if (request.full_content !== undefined) {
-        jsonPath = join(
-          await getSessionTmpDir(),
-          `response-${safeFileId(toolCallId)}.json`,
-        );
-        await writeFile(jsonPath, JSON.stringify(data, null, 2), "utf8");
-        note += `\nFull JSON response saved to: ${jsonPath}`;
       }
 
       const details: SearchDetails = {
@@ -316,7 +239,6 @@ export default function (pi: ExtensionAPI) {
         outputLines: content.split("\n").length,
         truncatedBy: truncation.truncatedBy ?? undefined,
         resultsPath,
-        jsonPath,
       };
 
       return {
@@ -333,12 +255,7 @@ export default function (pi: ExtensionAPI) {
       const marketLabel = ` [${args.market ?? "fr-fr"}]`;
       const typeLabel =
         args.type && args.type !== "web" ? ` (${args.type})` : "";
-      const enrichLabel =
-        (args.type ?? "web") === "web" && args.extraSnippets !== false
-          ? " (enriched)"
-          : "";
-      const contentLabel = args.fullContent ? ` [${args.fullContent}]` : "";
-      const text = `staan_search: "${args.query}"${marketLabel}${typeLabel}${enrichLabel}${contentLabel}`;
+      const text = `staan_search: "${args.query}"${marketLabel}${typeLabel}`;
       return new Text(text, 0, 0);
     },
 
