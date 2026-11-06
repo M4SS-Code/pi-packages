@@ -62,6 +62,12 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
           "id": "glm-5.3",
           "name": "GLM 5.3",
           "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": null,
+            "medium": null,
+            "max": "max"
+          },
           "contextWindow": 262144,
           "maxTokens": 16384,
           "cost": {
@@ -69,15 +75,18 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
             "output": 5.5,
             "cacheRead": 0,
             "cacheWrite": 0
-          },
-          "compat": {
-            "thinkingFormat": "zai"
           }
         },
         {
           "id": "deepseek-v4.1-flash-1017",
           "name": "DeepSeek V4.1 Flash",
           "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": null,
+            "medium": null,
+            "max": "max"
+          },
           "input": ["text", "image"],
           "contextWindow": 262144,
           "maxTokens": 32768,
@@ -92,6 +101,12 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
           "id": "qwen3.8-27b",
           "name": "Qwen 3.8 27B",
           "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": null,
+            "high": null,
+            "xhigh": "xhigh"
+          },
           "input": ["text", "image"],
           "contextWindow": 262144,
           "maxTokens": 32768,
