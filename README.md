@@ -75,7 +75,7 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
           }
         },
         {
-          "id": "deepseek-v4.1-flash",
+          "id": "deepseek-v4.1-flash-1017",
           "name": "DeepSeek V4.1 Flash",
           "reasoning": true,
           "contextWindow": 262144,
