@@ -78,6 +78,7 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
           "id": "deepseek-v4.1-flash-1017",
           "name": "DeepSeek V4.1 Flash",
           "reasoning": true,
+          "input": ["text", "image"],
           "contextWindow": 262144,
           "maxTokens": 32768,
           "cost": {
@@ -91,6 +92,7 @@ We considered publishing a Scaleway LLM Provider package but [hope to integrate 
           "id": "qwen3.8-27b",
           "name": "Qwen 3.8 27B",
           "reasoning": true,
+          "input": ["text", "image"],
           "contextWindow": 262144,
           "maxTokens": 32768,
           "cost": {
