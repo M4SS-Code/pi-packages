@@ -32,15 +32,25 @@ Note what the rest depends on:
   otherwise. Install a missing one with `cargo install --locked cargo-deny`
   (or `cargo-audit`). Advisory ignores only ever go in `deny.toml`; never
   write cargo-audit's `.cargo/audit.toml`.
-- **The graph cargo-deny checks**: `[graph]` in `deny.toml`. Each entry of
-  `targets` (a triple, or a table with `triple`) becomes a
+- **The graph cargo-deny checks**: `[graph]` in `deny.toml`. A library has no
+  `targets` in `[graph]`, so cargo-deny checks every target. When CI builds
+  binaries or container images for specific targets (the `--target` triples in
+  its build jobs or in the `Dockerfile`s they build, or the builder image's
+  own triple when `cargo build` runs without `--target`), `targets` in
+  `[graph]` must match those exact triples; if an application's CI has no
+  build job, keep whatever `targets` its `deny.toml` already lists. Fix a
+  mismatch in `deny.toml` first in its own commit (`references/ci-audit.md`,
+  "What the jobs run") so the baseline and CI check the right graph. Each
+  entry of `targets` (a triple, or a table with `triple`) becomes a
   `--target <triple>` for `cargo tree`; without `targets`, use
   `--target all`. `exclude-dev = true` becomes `-e normal,build`. These are
   `<graph>` in the `cargo tree` commands below, so that what they show
   matches what cargo-deny checks in CI.
 - **What CI runs**: the `run:` steps (the clippy and test commands, their
-  feature combinations, the MSRV job, pinned toolchains) and
-  cargo-deny-action's `arguments` (`--all-features` in our repositories).
+  feature combinations, the MSRV job, whether the Rust toolchain is pinned
+  and whether the clippy jobs actually use that pinned version instead of the
+  latest `stable`) and cargo-deny-action's `arguments` (`--all-features` in
+  our repositories).
 - **What's published**: which workspace crates go to crates.io, and whether
   the others carry `publish = false` (`references/ci-audit.md`,
   "Publishing"). It decides whether a major upgrade breaks users (step 7);
@@ -246,10 +256,9 @@ This breaks builds with Rust 1.85 to 1.88, which have to upgrade.
 Clippy reads the MSRV from `rust-version` and only suggests APIs that the MSRV
 has, so a bump enables new lints (`collapsible_if` with let chains,
 `missing_const_for_fn`, `manual_div_ceil`, ...). Run CI's clippy commands with
-CI's toolchain (`cargo +1.NN.P clippy ...` when CI pins one) and fix the new
-warnings in their own commit,
-`style(clippy): fix warnings enabled by the MSRV bump`, whose body names each
-lint and how it was fixed.
+CI's pinned toolchain (`cargo +1.NN.P clippy ...`) and fix the new warnings in
+their own commit, `style(clippy): fix warnings enabled by the MSRV bump`,
+whose body names each lint and how it was fixed.
 
 Then look for code that was waiting on this MSRV: comments like
 `FIXME: ... with MSRV >= 1.NN`, polyfills, `rustversion` or `autocfg` version
@@ -478,7 +487,10 @@ obsolete. Report the holds that stay, with their reasons.
 
 ## 10. CI's pinned toolchain
 
-When CI pins its toolchains (stable, beta or nightly) and one has fallen
-behind, finish the run by bumping it, as described in
-`references/ci-audit.md` ("Toolchains"); our repositories pair it with their
-routine dependency upgrades.
+Check that CI pins its Rust version (`RUST_VERSION`, `toolchain: 1.NN.P`, or a
+`rust:1.NN-...` image) and that every job running `cargo clippy` actually uses
+that pinned version, with `components: clippy`, rather than the latest
+`stable` (`references/ci-audit.md`, "Toolchains"). Fix any job that leaves the
+toolchain unpinned or runs clippy on floating `stable`, and when a pinned
+toolchain (stable, beta or nightly) has fallen behind, finish the run by
+bumping it; our repositories pair this with their routine dependency upgrades.

@@ -148,14 +148,16 @@ disagree (jobs run as `runner`, not `root`, and `uses:` must point to
 `https://code.m4ss.net/Actions/`).
 
 The toolchains in the image are a cache, not a constraint. Workflows still
-ask for the versions they need (`rust-toolchain`, `setup-node`, the project's
-`packageManager` for pnpm); when that's the version the image has, nothing
-gets downloaded, and otherwise the action installs it. So the images and our
-repositories usually move to a new version together, for speed and
-consistency, but a repository that hasn't moved yet keeps working. For
-example, at the time of writing Node.js 26 has just become the LTS release,
-while the images and our repositories are still on 24: they'll move to 26
-together.
+ask for the versions and components they need (`rust-toolchain` with
+`toolchain: ${{ env.RUST_VERSION }}` and `components: clippy` or `rustfmt`,
+`setup-node`, the project's `packageManager` for pnpm); when that's the
+version the image has, nothing gets downloaded, and otherwise the action
+installs a fresh `--profile minimal` toolchain with only the requested
+components. So the images and our repositories usually move to a new version
+together, for speed and consistency, but a repository that hasn't moved yet
+keeps working. For example, at the time of writing Node.js 26 has just become
+the LTS release, while the images and our repositories are still on 24:
+they'll move to 26 together.
 
 Building container images with podman needs the privileged runner (see the
 README).

@@ -83,7 +83,12 @@ it wasn't known whether they passed.
   checksum where the project publishes one.
 - Container images (`container:`, `services:`, `docker run`) pinned by
   digest: `image:tag@sha256:...`, or `image@sha256:... # tag`.
-- Pinned Rust toolchains are current: stable and beta the latest ones, a
+- The Rust version is pinned in CI (`RUST_VERSION: 1.NN.P` in top-level
+  `env:`, passed as `toolchain: ${{ env.RUST_VERSION }}` to
+  `dtolnay/rust-toolchain`, and `FROM rust:1.NN-...` in any `Dockerfile` CI
+  builds), and the clippy jobs (along with `rustfmt`, `cargo-hack`, `doc` and
+  `build`) actually use that pinned version rather than the latest `stable`.
+  All pinned toolchains are current: stable and beta the latest ones, a
   nightly not too old (see "Toolchains").
 
 ### Runners
@@ -106,9 +111,23 @@ it wasn't known whether they passed.
 
 - `--locked` on every cargo command that builds or tests, and
   `pnpm install --frozen-lockfile`.
-- clippy over `--all-targets` and the feature combinations that matter; an
-  MSRV job testing with the `rust-version` toolchain.
-- cargo-deny when the repository has a `deny.toml`.
+- clippy over `--all-targets` and the feature combinations that matter,
+  running on the pinned Rust toolchain (`toolchain: ${{ env.RUST_VERSION }}`
+  with `components: clippy`), never floating `stable`; an MSRV job testing
+  with the `rust-version` toolchain.
+- cargo-deny when the repository has a `deny.toml`, with `[graph] targets`
+  matching what CI builds when available: no `targets` for a library (so
+  cargo-deny checks every target), and the exact target triples CI builds when
+  the workflow or a `Dockerfile` it builds produces binaries or container
+  images (`--target <triple>`, or the builder image's own triple when
+  `cargo build` runs without `--target`, such as `x86_64-unknown-linux-musl`
+  on an `amd64` Alpine builder). Repositories that migrated from Alpine to
+  Ubuntu builds often still list `-musl` triples in `deny.toml` while building
+  `-gnu`, or list `aarch64` when CI only builds `x86_64`. Re-run
+  `cargo deny --workspace --all-features check` after aligning `targets`,
+  since the target change can surface a license or advisory in
+  target-specific dependencies or leave an `allow` license or `ignore` entry
+  unused.
 - Node.js versions in the matrix are all maintained releases (the schedule
   is in the `nodejs/Release` repository): drop end-of-life ones, add the new
   LTS.
@@ -203,8 +222,29 @@ A major upgrade that needed workflow changes gets its own commit.
 
 ## Toolchains
 
-CI may pin any of the Rust channels. Compare each pin with what the channel
-ships now:
+CI pins the Rust version it runs `rustfmt`, `clippy`, `cargo-hack`, `doc` and
+`build` with (`RUST_VERSION: 1.NN.P` in top-level `env:`), rather than leaving
+them on floating `stable`. Every new Rust release adds clippy lints, so a
+clippy job that runs on the latest `stable` breaks CI on unrelated commits
+under `-D warnings`.
+
+Check every job that runs `cargo clippy` — a dedicated `clippy` job, a
+combined `test` job that runs clippy before the tests, or a cross-platform
+`build` job — to make sure it actually uses the pinned version:
+
+- It selects `toolchain: ${{ env.RUST_VERSION }}` on `dtolnay/rust-toolchain`
+  (pinned to a commit on `# master`), never `@stable`, `toolchain: stable`,
+  `rustup update ... stable`, or an omitted `toolchain:` input or step that
+  falls back to whatever `stable` the runner has.
+- It passes `components: clippy` to `rust-toolchain`: when `RUST_VERSION`
+  differs from the runner image's preinstalled toolchain, the action installs
+  with `--profile minimal`, which omits `clippy` unless requested.
+- Only a `test` matrix that exists to test the channels (`stable`, `beta`,
+  `nightly` and the pinned MSRV `1.NN.0`) uses moving channel names, and that
+  job runs `cargo test`, not `cargo clippy`.
+
+Compare each pin (including `FROM rust:1.NN-...` in `Dockerfile`s CI builds)
+with what the channel ships now:
 
 ```sh
 for c in stable beta nightly; do
@@ -266,8 +306,11 @@ part of every audit:
    newest changes show where it's heading.
 3. Compare this repository with it, section by section:
    - `deny.toml`: the same sections and settings, in the same order and style.
-     Only what follows from the dependencies differs: the licenses in
-     `allow`, and advisory ignores with their reasons.
+     Only what follows from the project and its dependencies differs:
+     `[graph] targets` matching the target triples this repository's CI builds
+     (omitted in libraries, and kept as is when an application's CI has no
+     build job), the licenses in `allow`, and advisory ignores with their
+     reasons.
    - Workflows: the same triggers, concurrency, permissions, job and step
      names, layout, actions pinned to the same commits, toolchain pins. Only
      what the project needs differs: its feature combinations, services,
