@@ -107,6 +107,21 @@ it wasn't known whether they passed.
     advisories/licenses or unused `allow`/`ignore` entries.
 - Keep Node.js matrix versions aligned with maintained releases from
   `nodejs/Release` (drop EOL majors, add new LTS).
+- Give every job or matrix entry that caches build outputs (such as Cargo's
+  `target/`) a distinct `actions/cache` primary `key` (distinguishing the job
+  or build profile, toolchain, runner OS/arch or target triple, and matrix
+  dimensions alongside `hashFiles('Cargo.lock')`). `actions/cache` never
+  updates an existing key on an exact hit, and on a cold miss concurrent jobs
+  collide: GitHub Actions is first-writer-wins (the fastest job locks in the
+  key and the others skip saving with `"Cache already exists"`), whereas
+  Forgejo Actions is last-writer-wins (each job uploads and overwrites the
+  previous entry). If two jobs that build different artifacts share a key (e.g.
+  `test` on `ubuntu-26.04` and a release `build` on `ubuntu-24.04`, a `live`
+  job and `test`, or an `msrv` job accidentally left on
+  `${{ env.RUST_VERSION }}`), one job either prevents the other from saving its
+  artifacts or populates the cache from the wrong build/OS. Content-addressed
+  package store caches (`setup-node` with `cache: pnpm`) have identical
+  contents for a given lockfile and can share a key.
 
 ### Publishing
 
