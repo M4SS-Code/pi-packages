@@ -21,14 +21,7 @@
     "git",
     "commit",
     "conventional-commits",
-    "dependencies",
-    "rust",
-    "cargo",
-    "node",
-    "pnpm",
-    "ci",
-    "github-actions",
-    "forgejo"
+    "dependencies"
   ],
   "type": "module",
   "publishConfig": {

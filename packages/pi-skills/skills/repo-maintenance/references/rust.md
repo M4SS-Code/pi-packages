@@ -1,12 +1,10 @@
 # Rust dependencies
 
-The steps depend on each other: the MSRV decides what the compatible upgrade
-can lock, and both decide which major upgrades are worth doing. Follow them in
-order. If `Cargo.lock` isn't tracked there is no compatible-upgrade commit;
-the rest still applies.
+Follow these steps in order: the MSRV determines what the compatible upgrade
+locks, and both determine which major upgrades apply. If `Cargo.lock` is not
+tracked in git, skip the compatible-upgrade commit and run the remaining steps.
 
-The commits come out in this order, each only when there's something to put
-in it:
+Create commits in this order (omit any step that has no changes):
 
 ```text
 build!: bump MSRV to v1.NN
@@ -21,49 +19,44 @@ chore(ci): upgrade Rust to v1.NN.P
 
 ## 1. Take a baseline
 
-Note what the rest depends on:
+Inspect the repository configuration:
 
-- **The MSRV**: `rust-version` in `[workspace.package]` or in each
-  `[package]`. There may be none.
-- **The resolver**: `resolver = "3"`, the default for `edition = "2024"`
-  packages, prefers versions that build on the MSRV; `"2"` and older ignore
-  the MSRV. A virtual workspace sets it in `[workspace]`.
-- **The advisory tool**: cargo-deny when `deny.toml` exists, cargo-audit
-  otherwise. Install a missing one with `cargo install --locked cargo-deny`
-  (or `cargo-audit`). Advisory ignores only ever go in `deny.toml`; never
-  write cargo-audit's `.cargo/audit.toml`.
-- **The graph cargo-deny checks**: `[graph]` in `deny.toml`. A library has no
-  `targets` in `[graph]`, so cargo-deny checks every target. When CI builds
-  binaries or container images for specific targets (the `--target` triples in
-  its build jobs or in the `Dockerfile`s they build, or the builder image's
-  own triple when `cargo build` runs without `--target`), `targets` in
-  `[graph]` must match those exact triples; if an application's CI has no
-  build job, keep whatever `targets` its `deny.toml` already lists. Fix a
-  mismatch in `deny.toml` first in its own commit (`references/ci-audit.md`,
-  "What the jobs run") so the baseline and CI check the right graph. Each
-  entry of `targets` (a triple, or a table with `triple`) becomes a
-  `--target <triple>` for `cargo tree`; without `targets`, use
-  `--target all`. `exclude-dev = true` becomes `-e normal,build`. These are
-  `<graph>` in the `cargo tree` commands below, so that what they show
-  matches what cargo-deny checks in CI.
-- **What CI runs**: the `run:` steps (the clippy and test commands, their
-  feature combinations, the MSRV job, whether the Rust toolchain is pinned
-  and whether the clippy jobs actually use that pinned version instead of the
-  latest `stable`) and cargo-deny-action's `arguments` (`--all-features` in
-  our repositories).
-- **What's published**: which workspace crates go to crates.io, and whether
-  the others carry `publish = false` (`references/ci-audit.md`,
-  "Publishing"). It decides whether a major upgrade breaks users (step 7);
-  report a crate that's missing its marker.
+- **MSRV**: `rust-version` in `[workspace.package]` or each `[package]` (if
+  set).
+- **Resolver**: `resolver = "3"` (the default for `edition = "2024"`) respects
+  `rust-version`; `"2"` and older ignore it. Virtual workspaces set `resolver`
+  in `[workspace]`.
+- **Advisory tool**: Use `cargo-deny` if `deny.toml` exists, otherwise
+  `cargo-audit`. Install if missing (`cargo install --locked cargo-deny` or
+  `cargo-audit`). Put advisory ignores only in `deny.toml`; never create or
+  edit `.cargo/audit.toml`.
+- **Target graph (`deny.toml` `[graph]`)**:
+  - First verify `deny.toml` `[graph] targets` matches what CI builds
+    (`references/ci-audit.md`, "What the jobs run"). If it mismatches, fix
+    `deny.toml` in its own commit before recording the baseline.
+  - Translate `[graph]` into `<graph>` flags for `cargo tree` so it inspects
+    the exact graph `cargo-deny` checks:
 
-The commands below pass `--workspace` to `cargo tree` and `cargo deny`.
-Without it, a root manifest that has its own `[package]` besides workspace
-members makes them look at the root package only; only a virtual workspace
-implies it. If CI's cargo-deny `arguments` lack it in such a repository,
-report that CI doesn't check the other members.
+    | `deny.toml` `[graph]` setting | `<graph>` flags for `cargo tree`           |
+    | ----------------------------- | ------------------------------------------ |
+    | `targets = [...]`             | `--target <triple>` for each listed triple |
+    | No `targets` key              | `--target all`                             |
+    | `exclude-dev = true`          | `-e normal,build`                          |
 
-Then record the state before anything changes, substituting the `<graph>`
-flags into `dups.sh` as you write it:
+- **CI commands**: Note the clippy, test and MSRV job commands, their feature
+  flags, whether CI pins the Rust toolchain and runs clippy on that pin
+  (`references/ci-audit.md`, "Toolchains"), and `cargo-deny-action`'s
+  `arguments` (`--all-features` in our repositories). Always pass `--workspace`
+  to `cargo tree` and `cargo deny` (a root manifest with its own `[package]`
+  otherwise checks only the root package; report if CI's `cargo-deny`
+  arguments omit `--workspace` in such a repo).
+- **Published crates**: Check which workspace crates are published to
+  crates.io and whether unpublished ones set `publish = false`
+  (`references/ci-audit.md`, "Publishing"). Report any unpublished crate
+  missing `publish = false`.
+
+Record the baseline advisories and duplicate versions (substitute the `<graph>`
+flags from the table above when writing `dups.sh`):
 
 ```sh
 cargo deny --workspace --all-features check advisories > <scratch>/advisories-before.txt 2>&1   # or: cargo audit
@@ -75,80 +68,74 @@ EOF
 sh <scratch>/dups.sh > <scratch>/dups-before.txt
 ```
 
-`dups.sh` lists the crates built in more than one version, for the targets
-and feature combinations that cargo-deny checks. It asks `cargo tree` on
-purpose: `Cargo.lock` also lists optional dependencies of dependencies that
-never get built, which don't count.
+(`dups.sh` uses `cargo tree` rather than `Cargo.lock` so unused optional
+dependencies are ignored.)
 
-## 2. Upgrade within the declared ranges
+## 2. Upgrade within the declared ranges (working tree only)
 
-First check whether resolution respects the MSRV:
+**State note:** Step 2 updates `Cargo.lock` in the working tree so Step 3 can
+inspect what remains. Do **not** stage or commit `Cargo.lock` until Step 5.
 
-```sh
-cargo update --dry-run 2>&1 | grep Locking
-```
+1. Check whether Cargo's resolver respects the MSRV:
 
-- `Locking N packages to highest Rust 1.NN compatible versions`: it does.
-- `Locking N packages to highest compatible versions` while a `rust-version`
-  is declared: the resolver ignores it and can lock versions the MSRV job
-  can't build. For the rest of the run, put
-  `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback` in front of every
-  cargo command that can write `Cargo.lock`: `update`, and `fetch`, `check`,
-  `build`, `clippy`, `test` and `tree` after a manifest change. Note in the
-  report that `resolver = "3"` would make that the default (only once the
-  MSRV is at least 1.84, since older Cargo can't read it).
+   ```sh
+   cargo update --dry-run 2>&1 | grep Locking
+   ```
 
-Then upgrade without committing yet (step 3 reads the result, and step 4 may
-bump the MSRV before this upgrade is committed):
+   - `Locking N packages to highest Rust 1.NN compatible versions`: MSRV is
+     respected.
+   - `Locking N packages to highest compatible versions` when `rust-version`
+     is set: the resolver ignores MSRV. Prefix **every** subsequent `cargo`
+     command that can touch `Cargo.lock` (`update`, and after manifest edits
+     `fetch`, `check`, `build`, `clippy`, `test`, `tree`) with
+     `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback`. Note in the final
+     report that setting `resolver = "3"` makes this automatic once MSRV is
+     `>= 1.84`.
 
-```sh
-cargo update
-```
+2. Update `Cargo.lock` without committing:
 
-Git dependencies (`git = "..."`, `[patch]` sections) move to the newest commit
-of their branch. Review what came in (`git log <old>..<new>` in their
-repository) as you would a release.
+   ```sh
+   cargo update
+   ```
+
+   If git dependencies (`git = "..."` or `[patch]`) moved to a newer commit,
+   review `git log <old>..<new>` in their repositories like a release diff.
 
 ## 3. Read what's left
 
-The dry run reads the lockfile in the working tree, so now it lists only what
-step 2 couldn't take:
+Run a verbose dry-run against the updated working-tree lockfile to see what
+Step 2 could not update:
 
 ```sh
 cargo update --dry-run --verbose 2>&1 | grep -E 'Unchanged|requires Rust'
 ```
 
-Four kinds of lines matter:
+Classify each output line:
 
-- `Unchanged ctutils v0.4.2 (available: v0.4.8, requires Rust 1.87)`: a
-  compatible release exists but needs a newer Rust. It's held back by the
-  MSRV. Cargo reports these for any dependency, transitive ones included.
-- `Unchanged criterion v0.7.0 (available: v0.8.2)`: the newest release is
-  incompatible, so this is a major upgrade. Cargo reports these only for
-  direct dependencies. A `requires Rust` suffix means the upgrade also needs
-  an MSRV bump.
-- `Unchanged foo v1.2.3 (available: v1.2.9)`: compatible, no Rust
-  requirement, yet not taken. Something pins it: an `=` or `<` requirement, or
-  a `[patch]`. Find what with
-  `cargo tree -q -i foo@1.2.3 --workspace <graph> --all-features` and
-  handle it in step 9.
-- `Updating graviola v0.4.1 -> v0.4.4 (requires Rust 1.89)`: no release in
-  range builds on the MSRV, so the resolver fell back to one that doesn't. The
-  MSRV is already broken for whatever enables this crate; report it.
+- `Unchanged ctutils v0.4.2 (available: v0.4.8, requires Rust 1.87)`:
+  Compatible release held back by the MSRV (reported for both direct and
+  transitive dependencies). Handle in Step 4.
+- `Unchanged criterion v0.7.0 (available: v0.8.2)`:
+  Incompatible (major) upgrade for a direct dependency. A `requires Rust`
+  suffix means it also needs an MSRV bump. Cargo only displays a major version
+  that fits the current MSRV when one exists, which can hide an even newer
+  major that requires a higher Rust version. For each direct dependency listed,
+  check the newest release and its `rust-version`:
+  `cargo search <crate> --limit 1` and `cargo info <crate>@<version>`.
+- `Unchanged foo v1.2.3 (available: v1.2.9)` (no `requires Rust`):
+  Compatible release blocked by an `=` or `<` pin or a `[patch]`. Locate the
+  pin with `cargo tree -q -i foo@1.2.3 --workspace <graph> --all-features` and
+  handle in Step 9.
+- `Updating graviola v0.4.1 -> v0.4.4 (requires Rust 1.89)`:
+  No version in range supports the MSRV, so Cargo fell back to an incompatible
+  one. The current MSRV is already broken for features enabling this crate;
+  report it and include it in Step 4.
 
-Cargo's compatibility rule tells compatible from incompatible: two versions
-are compatible when their leftmost non-zero components are equal. `1.2 → 1.9`
-and `0.3.1 → 0.3.9` are compatible; `1.9 → 2.0`, `0.3 → 0.4` and
-`0.0.3 → 0.0.4` are not.
+(In Cargo semver, versions are compatible when their leftmost non-zero
+components match: `1.2 -> 1.9` and `0.3.1 -> 0.3.9` are compatible;
+`1.9 -> 2.0`, `0.3 -> 0.4` and `0.0.3 -> 0.0.4` are major upgrades.)
 
-For a major upgrade, Cargo shows a release that fits the MSRV when one exists,
-so a newer major that needs a newer Rust can hide behind it. For each direct
-dependency with such a line, look up the newest release
-(`cargo search <crate> --limit 1`; make sure the name matches) and its
-`rust-version` (`cargo info <crate>@<version>`).
-
-To find where a direct dependency is declared, list them with their
-requirements:
+List where direct dependencies are declared:
 
 ```sh
 cargo metadata --format-version 1 --no-deps \
@@ -156,11 +143,10 @@ cargo metadata --format-version 1 --no-deps \
       | [$p.name, .name, .req, (.kind // "normal")] | @tsv' | sort -u
 ```
 
-A member that declares `foo.workspace = true` takes the requirement from
-`[workspace.dependencies]` in the root manifest; that's where to edit it.
+If a member sets `foo.workspace = true`, edit its requirement in the root
+`Cargo.toml` under `[workspace.dependencies]`.
 
-Check advisories again and compare the IDs with the baseline. The raw outputs
-differ on every line, because locations and dependency trees move:
+Re-check advisories and diff the IDs against the baseline:
 
 ```sh
 cargo deny --workspace --all-features check advisories > <scratch>/advisories-after.txt 2>&1
@@ -168,176 +154,160 @@ diff <(grep -oE 'RUSTSEC-[0-9]{4}-[0-9]{4}' <scratch>/advisories-before.txt | so
      <(grep -oE 'RUSTSEC-[0-9]{4}-[0-9]{4}' <scratch>/advisories-after.txt | sort -u)
 ```
 
-Yanked versions have no ID: compare those findings by crate. Advisories and
-yanked versions that disappeared go in the body of the compatible-upgrade
-commit. Include remaining advisories whose fix is held back by the MSRV in
-step 4's question; handle the rest in step 6.
+Compare yanked-crate warnings by crate name. Mention advisories and yanked
+versions resolved by `cargo update` in Step 5's commit body. Include remaining
+advisories whose fix requires a newer Rust in Step 4's question; handle all
+others in Step 6.
 
 ## 4. Settle the MSRV
 
-Go to step 5 if nothing is held back by the MSRV: no `requires Rust` in step
-3's output, and no newer major that needs a newer Rust.
+- **If nothing in Step 3 requires a newer Rust:** Proceed directly to Step 5.
+- **If any compatible update, advisory fix or major upgrade requires a newer
+  Rust:** Stop and ask the user whether to bump the MSRV. Include all decision
+  details in a single message:
+  - Current MSRV and latest stable Rust:
+    `curl -sSf https://static.rust-lang.org/dist/channel-rust-stable.toml | awk '/^\[pkg\.rust\]/{getline; print}'`
+  - Each held-back crate: locked version, available version, required Rust
+    version, whether direct or via which dependency, and relevant fixes
+    (advisories first, then relevant changelog fixes).
+  - Major upgrades that require a newer Rust.
+  - The lowest MSRV that unlocks the needed updates, and what a smaller bump
+    would leave behind.
 
-Otherwise stop and ask whether to bump it, with everything needed to decide
-in one message:
+  Example prompt:
 
-- the current MSRV, and the latest stable Rust:
-  `curl -sSf https://static.rust-lang.org/dist/channel-rust-stable.toml | awk '/^\[pkg\.rust\]/{getline; print}'`;
-- each held-back crate: locked and available versions, the Rust it requires,
-  direct or through which dependency, and what the newer version brings
-  (advisory fixes first, then the fixes from its changelog that matter to
-  us);
-- majors that also need a newer Rust;
-- the lowest MSRV that unlocks everything worth having, and what a smaller
-  bump would leave behind.
+  ```text
+  The MSRV (1.85) holds back:
 
-For example:
+  ctutils 0.4.2 → 0.4.8, needs 1.87, via digest (sha2, hmac, md-5):
+    fixes RUSTSEC-2026-0385, which affects our signing
+  graviola 0.4.4 already needs 1.89: the graviola backend doesn't build on 1.85
+  criterion 0.7 → 0.8 (dev-dependency), needs 1.86
 
-```text
-The MSRV (1.85) holds back:
+  1.89 covers all three; the latest stable is 1.99.1. Bump the MSRV to 1.89?
+  ```
 
-ctutils 0.4.2 → 0.4.8, needs 1.87, via digest (sha2, hmac, md-5):
-  fixes RUSTSEC-2026-0385, which affects our signing
-graviola 0.4.4 already needs 1.89: the graviola backend doesn't build on 1.85
-criterion 0.7 → 0.8 (dev-dependency), needs 1.86
+- **If the user declines (or in a non-interactive run):** Proceed to Step 5,
+  list the held-back crates in the report, and (if non-interactive) place the
+  MSRV question at the top of the report.
 
-1.89 covers all three; the latest stable is 1.99.1. Bump the MSRV to 1.89?
-```
+### If the user approves the MSRV bump
 
-If the answer is no, go to step 5 and list what stays held back in the
-report. If nobody is there to answer, do the same and put the question at the
-top of the report: a later yes gets a run of its own (the MSRV commit, the
-lint fixes, then another compatible-upgrade commit for what the bump
-unlocks).
+1. **Revert `Cargo.lock` first** so the MSRV commit builds against the original
+   lockfile:
 
-### Bump the MSRV
+   ```sh
+   git restore Cargo.lock
+   ```
 
-Restore the lockfile first (`git restore Cargo.lock`): step 2's result was
-for reading, and these commits must build with the lockfile they contain.
+2. Find every reference to the old MSRV in tracked files:
 
-Find every place that states the old version, among tracked files:
+   ```sh
+   git grep -n -E 'rust-version|msrv|MSRV'
+   git grep -n -F '1.OLD'    # inspect each match
+   ```
 
-```sh
-git grep -n -E 'rust-version|msrv|MSRV'
-git grep -n -F '1.OLD'    # judge each hit
-```
+3. Update the MSRV in:
+   - `rust-version` in every `Cargo.toml` that sets it;
+   - CI MSRV jobs in `.github/workflows/` and `.forgejo/workflows/` (toolchain
+     flags like `rustup default 1.NN` or `toolchain: 1.NN.0`, job names like
+     `msrv / 1.NN.0`, matrix entries, and cache keys);
+   - `msrv` in `clippy.toml` (if present);
+   - documentation and README badges, e.g.
+     `[![Rustc Version 1.NN+](https://img.shields.io/badge/rustc-1.NN+-lightgray.svg)](https://blog.rust-lang.org/YYYY/MM/DD/Rust-1.NN.0/)`
+     (get the release date from `rust-lang/rust`'s `RELEASES.md` and verify the
+     URL resolves).
+4. Commit as `build!: bump MSRV to v1.NN`. State what required the bump and end
+   with what breaks:
 
-Update:
+   ```text
+   build!: bump MSRV to v1.89
 
-- `rust-version` in every manifest that sets it;
-- the CI job testing the MSRV, in `.github/workflows/` and
-  `.forgejo/workflows/` alike: the toolchain (`rustup default 1.NN`,
-  `toolchain: 1.NN.0`) and every repetition of the version (job names like
-  `msrv / 1.NN.0`, matrix entries, cache keys like `rust-1.NN.0-...`);
-- `msrv` in `clippy.toml`, if set: it overrides `rust-version` for clippy;
-- the docs: README badges such as
-  `[![Rustc Version 1.NN+](https://img.shields.io/badge/rustc-1.NN+-lightgray.svg)](https://blog.rust-lang.org/YYYY/MM/DD/Rust-1.NN.0/)`
-  (the date is in rust-lang/rust's `RELEASES.md`, as
-  `Version 1.NN.0 (YYYY-MM-DD)`; check that the link resolves),
-  "Minimum supported Rust version" sections and crate-level docs.
+   The graviola backend requires Rust 1.89, so the declared MSRV only held
+   for the other backends. The versions of ctutils, a dependency of digest,
+   that fix RUSTSEC-2026-0385 also require Rust 1.87, so the MSRV-aware
+   resolver kept a vulnerable version locked.
 
-An MSRV bump breaks the builds of whoever is on an older Rust, so it's a
-breaking change: commit as `build!: bump MSRV to v1.NN`, saying what needed
-it and, last, what breaks:
+   This breaks builds with Rust 1.85 to 1.88, which have to upgrade.
+   ```
 
-```text
-build!: bump MSRV to v1.89
-
-The graviola backend requires Rust 1.89, so the declared MSRV only held
-for the other backends. The versions of ctutils, a dependency of digest,
-that fix RUSTSEC-2026-0385 also require Rust 1.87, so the MSRV-aware
-resolver kept a vulnerable version locked.
-
-This breaks builds with Rust 1.85 to 1.88, which have to upgrade.
-```
-
-### Fix what the bump enables
-
-Clippy reads the MSRV from `rust-version` and only suggests APIs that the MSRV
-has, so a bump enables new lints (`collapsible_if` with let chains,
-`missing_const_for_fn`, `manual_div_ceil`, ...). Run CI's clippy commands with
-CI's pinned toolchain (`cargo +1.NN.P clippy ...`) and fix the new warnings in
-their own commit, `style(clippy): fix warnings enabled by the MSRV bump`,
-whose body names each lint and how it was fixed.
-
-Then look for code that was waiting on this MSRV: comments like
-`FIXME: ... with MSRV >= 1.NN`, polyfills, `rustversion` or `autocfg` version
-checks, `cfg`s that are now always true. Small removals go in a `refactor:`
-commit; list bigger ones in the report. If the new MSRV allows a newer
-edition (2024 needs 1.85), say so, but don't migrate unasked.
-
-Finally rerun `cargo update`, with the same environment as in step 2. It now
-resolves against the new MSRV and takes what was held back. Rerun step 3's
-dry run to check that nothing is still held back unexpectedly.
+5. **Fix newly enabled clippy lints:** Run CI's clippy commands with CI's
+   pinned toolchain (`cargo +1.NN.P clippy ...`). Commit any fixes as
+   `style(clippy): fix warnings enabled by the MSRV bump`, naming each lint and
+   fix in the body.
+6. **Clean up MSRV-gated code:** Check for `FIXME` comments waiting on the new
+   MSRV, polyfills, `rustversion`/`autocfg` checks, or always-true `cfg`s.
+   Commit small removals as `refactor: ...`; note larger refactors or newly
+   available Rust editions (Edition 2024 requires 1.85) in the report without
+   migrating unasked.
+7. **Re-run `cargo update`** (with the Step 2 environment) to lock the newly
+   unlocked versions, and re-run Step 3's dry-run to confirm nothing unexpected
+   remains held back.
 
 ## 5. Commit the compatible upgrade
 
-Run the checks from SKILL.md's ground rules, all with `--locked`. When CI has
-an MSRV job, run its commands with the MSRV toolchain
-(`rustup toolchain install 1.NN --profile minimal`): the MSRV-aware resolver
-trusts each crate's declared `rust-version`, and a crate that understates or
-omits it only shows up there. Run cargo-deny's full check as CI does
-(`cargo deny --workspace --all-features check`): besides advisories it checks
-licenses, and a new license missing from `[licenses] allow` fails CI and is
-the user's call.
+1. Run CI's check suite with `--locked`.
+   - If CI has an MSRV job, run its commands with the MSRV toolchain
+     (`rustup toolchain install 1.NN --profile minimal`) to catch crates that
+     understate `rust-version`.
+   - Run `cargo deny --workspace --all-features check` (checks licenses, bans
+     and advisories). Stop and ask if a new dependency introduces an unallowed
+     license.
+2. Handle check failures:
+   - **Fails only on the MSRV toolchain:** A crate understated its
+     `rust-version`. Identify it from the compiler error, downgrade it with
+     `cargo update -p <crate> --precise <last-working-version>`, check its
+     upstream issue tracker, and report it.
+   - **Fails on stable/pinned toolchain:** A compatible release regressed.
+     Identify the crate from `git diff <base> -- Cargo.lock` (bisecting with
+     `--precise` if needed), hold it back at the last working version, check
+     its upstream issue tracker, and report it.
+   - Note in the report that `--precise` holds only last until the next
+     `cargo update` unless pinned in `Cargo.toml`.
+   - Include minor code adjustments required by the compatible update (such as
+     fixing a new deprecation warning under `-D warnings`) in this commit.
+   - Remove any `deny.toml` advisory `ignore` entries that `cargo-deny` reports
+     as no longer matching.
+3. Commit `Cargo.lock` (and any accompanying fix or obsolete `deny.toml`
+   ignore removal) as:
+   `build(deps): upgrade semver compatible Rust dependencies`.
+   Include a commit body only when there are fixed advisories (naming the
+   affected crates and what uses them), replaced yanked versions, `--precise`
+   holds, or removed `deny.toml` ignores:
 
-When a check fails:
+   ```text
+   build(deps): upgrade semver compatible Rust dependencies
 
-- **Only on the MSRV toolchain**: a crate needs a newer Rust than it
-  declares. Find it in the build error, hold it back with
-  `cargo update -p <crate> --precise <last-working-version>`, and report
-  it with its upstream issue tracker checked.
-- **Elsewhere**: a compatible release regressed. Find it in
-  `git diff <base> -- Cargo.lock`, bisecting with `--precise` if needed, check
-  its issue tracker, hold it back at the last good version, and report it.
-
-Say in the report that a `--precise` hold only lasts until the next
-`cargo update`; making it durable is the user's call. Code changes the upgrade
-forces, like a deprecation under `-D warnings`, go in this commit and its
-body.
-
-Commit `Cargo.lock` as
-`build(deps): upgrade semver compatible Rust dependencies`. Give it a body
-only when something deserves attention: advisories it fixes (with the
-affected crates and what uses them), yanked versions it replaces, holds,
-`deny.toml` ignores it made obsolete (remove those in this commit).
-
-```text
-build(deps): upgrade semver compatible Rust dependencies
-
-The locked version of ctutils, which the hmac, sha2 and md-5 crates use
-through digest, had non-constant-time mask generation and u128
-comparisons (RUSTSEC-2026-0385). The locked versions of h2, rustls and
-quinn-proto, dependencies of reqwest which only the tests and examples
-use, had 10 security advisories published since the last upgrade, and
-the locked version of chacha20 had been yanked.
-```
+   The locked version of ctutils, which the hmac, sha2 and md-5 crates use
+   through digest, had non-constant-time mask generation and u128
+   comparisons (RUSTSEC-2026-0385). The locked versions of h2, rustls and
+   quinn-proto, dependencies of reqwest which only the tests and examples
+   use, had 10 security advisories published since the last upgrade, and
+   the locked version of chacha20 had been yanked.
+   ```
 
 ## 6. Remaining advisories
 
-Run the check as CI does, with `--workspace`:
-`cargo deny --workspace --all-features check advisories` with `deny.toml`,
-`cargo audit` without it. Handle vulnerabilities and `unsound` advisories the
-same way, since both usually have fixed releases:
+Run `cargo deny --workspace --all-features check advisories` (or `cargo audit`
+if there is no `deny.toml`).
 
-1. **Is there a fix?** A compatible one should already be locked, unless the
-   MSRV holds it back (step 4) or an `=` or `<` requirement or `[patch]` pins
-   the crate (step 3). A fix in a new major of a direct dependency is done as
-   a major upgrade (step 7), whose commit body names the advisory. A fix that
-   a transitive dependency's maintainers have to adopt needs the upstream
-   check from step 8.
-2. **Does it apply?** Read the advisory (`https://rustsec.org/advisories/<ID>`,
-   or its file in the rustsec/advisory-db repository) for the affected
-   functions, features and platforms. Then check our side: do we call the
-   affected API, do we enable the affected feature
+For each vulnerability or `unsound` advisory:
+
+1. **Check for a fix:**
+   - Fix is in a new major of a direct dependency: handle it in Step 7 and cite
+     the advisory in that commit's body.
+   - Fix requires a transitive dependency to upgrade: run the upstream check
+     from Step 8.
+2. **Check whether it affects this repository:** Read the advisory
+   (`https://rustsec.org/advisories/<ID>`) for affected functions, features and
+   platforms. Check whether our code calls the function, enables the feature
    (`cargo tree -q -e features -i <crate> --workspace --target all --all-features`),
-   is the crate only a dev- or build-dependency, does it build for our
-   targets?
-3. **Act on it:**
-
-   - It doesn't apply and `deny.toml` exists: ignore it with the reason, in
-     its own commit `build(deps): ignore RUSTSEC-YYYY-NNNN`, whose body gives
-     the reasoning:
+   uses the crate only in dev/build dependencies, or builds for the affected
+   target.
+3. **Act:**
+   - **Does not apply, and `deny.toml` exists:** Ignore it in `deny.toml` in a
+     dedicated commit `build(deps): ignore RUSTSEC-YYYY-NNNN` explaining why in
+     both the comment/reason and commit body:
 
      ```toml
      [advisories]
@@ -346,151 +316,126 @@ same way, since both usually have fixed releases:
      ]
      ```
 
-   - It doesn't apply and there's no `deny.toml`: report it. Ignores live in
-     `deny.toml` only: don't create one for this, and never write
-     cargo-audit's `.cargo/audit.toml`.
-   - It applies and has no fix, or the fix needs an MSRV bump, an override or
-     an upstream release: stop and lay out the options.
+   - **Does not apply, and no `deny.toml` exists:** Report it (do not create
+     `deny.toml` or `.cargo/audit.toml`).
+   - **Applies and has no simple fix (needs MSRV bump, override or upstream
+     release):** Stop and present the options to the user.
 
-Other kinds of findings:
+For other advisory types:
 
-- **Unmaintained** advisories are about the crate, not a version: only
-  replacing it fixes them, and that's the user's call. Report them with the
-  alternatives the advisory suggests; ignore them only if the user says so.
-- **Yanked** versions: `cargo update -p <crate>` normally moves off them. If no
-  compatible version is left, report it.
-- **A malicious crate**: stop everything and report at once. Don't build
-  anything that compiles it, since build scripts and proc-macros run at build
-  time.
-
-cargo-deny warns about `ignore` entries that no longer match anything. Remove
-them, in the compatible-upgrade commit when that's what made them obsolete.
+- **`unmaintained`**: Report the crate and the alternatives listed in the
+  advisory. Ignore in `deny.toml` only if the user asks.
+- **`yanked`**: Run `cargo update -p <crate>`. Report if no compatible unyanked
+  version exists.
+- **`malicious`**: Stop immediately without compiling anything that builds the
+  crate (build scripts and proc-macros execute during `cargo check`/`build`)
+  and report to the user.
 
 ## 7. Major upgrades
 
-Go through the direct dependencies that have an incompatible release (step 3),
-one commit per upgrade.
+Upgrade direct dependencies that have incompatible updates (from Step 3), one
+commit per upgrade or coupled group.
 
-**Group what has to move together.** Crates that use each other's types in
-their public APIs only work at matching versions: `usvg` and `resvg`, `rustls`
-with `tokio-rustls` and `hyper-rustls`, the RustCrypto crates (`digest`,
-`sha2`, `hmac`, `md-5`), `graviola` and `rustls-graviola`, the
-`opentelemetry` crates. The tell is that the new release of one requires the
-new major of the other (read its `Cargo.toml`), or that upgrading one alone
-fails with "expected `foo::Type`, found `foo::Type`" while `cargo tree -d`
-shows `foo` twice. To see which of our dependencies use the old major too:
+**Group coupled crates into one commit.** Crates that share public types must
+upgrade together (e.g., `usvg`/`resvg`, `rustls`/`tokio-rustls`/`hyper-rustls`,
+RustCrypto crates like `digest`/`sha2`/`hmac`/`md-5`,
+`graviola`/`rustls-graviola`, `opentelemetry` crates). Detect coupled crates
+when:
+
+- the new release's manifest requires the new major of the other crate, or
+- upgrading one alone fails with `expected foo::Type, found foo::Type` and
+  `cargo tree -d` lists `foo` twice.
+
+Check which other direct dependencies depend on the old major:
 `cargo tree -q -i <crate>@<old> --workspace <graph> --all-features --depth 1`.
-Upgrade such a group in one commit; everything else separately.
 
-For each upgrade:
+For each upgrade (or coupled group):
 
-1. Edit the requirement where it's declared (a member's `Cargo.toml` or
-   `[workspace.dependencies]`), in the style of the existing one (`"0.23"`,
-   `"2"`), and run `cargo fetch` (with
-   `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback` if step 2 needed it):
-   Cargo resolves the new version into `Cargo.lock` with minimal lockfile
-   changes and unpacks the `.crate` without running build scripts or
-   proc-macros. If it needs a newer Rust than the MSRV, restore the manifest
-   and lockfile and include it in step 4's question.
-2. Review it with `references/changelogs.md`: the changelog for every release
-   in between, the crates.io diff from the version locked in `HEAD`, and our
-   use of the crate.
-3. Build (`cargo check --workspace --all-targets --all-features`) and adapt
-   our code to the breaking changes. Raise the minimum requirement in
-   `Cargo.toml` if we use something added after `.0`.
-4. Run the checks, then check duplicates (step 8).
-5. Commit `build(deps): upgrade <crate> to v<major>`, with the body
-   `references/changelogs.md` describes.
-
-When the project publishes a library to crates.io and the upgraded
-dependency is part of its public API (re-exports, public arguments, return
-types and fields, trait implementations for its types), the upgrade breaks
-our users: mark the subject with `!` (`build(deps)!: upgrade url to v3`) and
-say what breaks in the body. A binary, or a crate with `publish = false`,
-has no such users.
-
-New upstream APIs that replace code of ours: when the replacement is small and
-clearly better, make it a separate `refactor:` commit after the upgrade;
-otherwise list it in the report. Skip upgrades that need a large migration,
-and report them with an estimate of what's involved.
+1. Update the version requirement in `Cargo.toml` (preserving the existing
+   specifier style, e.g. `"0.23"` or `"2"`) and run `cargo fetch` (with
+   `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback` if needed in Step 2).
+   `cargo fetch` resolves `Cargo.lock` and downloads the `.crate` without
+   running build scripts or proc-macros. If resolution requires a higher MSRV,
+   revert `Cargo.toml` and `Cargo.lock` and add it to Step 4's MSRV prompt.
+2. Audit the release diff and changelog (`references/changelogs.md`).
+3. Run `cargo check --workspace --all-targets --all-features` and adapt code to
+   breaking changes. If our code relies on an API added after `.0`, set that
+   minor/patch version as the minimum requirement in `Cargo.toml`. If the
+   migration is large, revert, skip the upgrade, and report an estimate of the
+   work required.
+4. Run CI's checks and check for newly introduced duplicate versions (Step 8).
+5. Commit as `build(deps): upgrade <crate> to v<major>` (or `build(deps)!:` if
+   it breaks a published library's public API; see `SKILL.md`, "Commit
+   subjects") with the commit body format from `references/changelogs.md`.
+6. If the new release provides an API that cleanly replaces a small local
+   workaround, commit that cleanup separately as `refactor: ...`; otherwise
+   note it in the report.
 
 ## 8. Duplicate versions
 
-After the compatible-upgrade commit and after each major upgrade, compare with
-the baseline:
+After Step 5 and after each major upgrade in Step 7, diff duplicate versions
+against the baseline:
 
 ```sh
 sh <scratch>/dups.sh > <scratch>/dups-after.txt
 diff <scratch>/dups-before.txt <scratch>/dups-after.txt
 ```
 
-For each duplicate the work introduced, find the offenders, the crates still
-on the older version:
+For each newly introduced duplicate, find the crates pulling in the older
+version:
 
 ```sh
 cargo tree -q -i <crate>@<older-version> --workspace <graph> --all-features --depth 1
 ```
 
-Report every new duplicate with its offenders. When a few crates (one to
-three) hold on to the old version, rather than half the dependency tree,
-check upstream for each one, because the user may want to send the fix
-themselves:
+Report every new duplicate and its offending parents. When only 1–3 crates hold
+back the old version, check the upstream status of each offender:
 
-1. Find its repository: `cargo info <offender>@<version>` (`repository:`),
-   and the commit it was published from: `git.sha1` in its
-   `.cargo_vcs_info.json` (see `references/changelogs.md`).
-2. Is it fixed but unreleased? A blobless clone answers it on any forge:
+1. Get the offender's repository URL (`cargo info <offender>@<version>`) and
+   published git SHA (`git.sha1` in `.cargo_vcs_info.json`; see
+   `references/changelogs.md`).
+2. Check whether it is already upgraded on the upstream default branch:
 
    ```sh
    git clone -q --filter=blob:none --no-checkout <repository> <scratch>/<offender>-repo
    cd <scratch>/<offender>-repo
-   git grep -l -E '^name = "<offender>"' origin/HEAD -- '*Cargo.toml'   # its manifest on the default branch
+   git grep -l -E '^name = "<offender>"' origin/HEAD -- '*Cargo.toml'
    git show origin/HEAD:<manifest-path>
-   git log --oneline <published-sha>..origin/HEAD                       # what hasn't been released
+   git log --oneline <published-sha>..origin/HEAD
    ```
 
-   If the manifest says `<crate>.workspace = true`, the requirement is in the
-   root manifest's `[workspace.dependencies]`.
+   (If the manifest uses `<crate>.workspace = true`, check the root
+   `Cargo.toml` under `[workspace.dependencies]`.)
 
-3. Is there an open pull request or issue? Bot pull requests count. On
-   GitHub:
+3. Check for open issues or PRs (including bot PRs). On GitHub:
 
    ```sh
    curl -sS 'https://api.github.com/search/issues?q=repo:<owner>/<repo>+<crate>&per_page=20' \
      | jq -r '.items[] | [(if .pull_request then "PR" else "issue" end), .state, .updated_at, .html_url, .title] | @tsv'
    ```
 
-   Other forges have the equivalent in their web search or API.
-
-For each offender, say which it is: fixed on the default branch but unreleased
-(the commit, and the release it's missing from), an open pull request (link,
-state, last activity), or nothing yet, which makes it a candidate for the user
-to send upstream. Don't silence duplicates in `deny.toml` without asking.
+Report whether each offender is fixed on `HEAD` (commit and unreleased status),
+has an open PR/issue (URL, state, last updated), or has neither. Never add
+duplicate skips to `deny.toml` without asking.
 
 ## 9. Standing holds
 
-Everything that keeps a dependency from moving was put there for a reason
-that may be gone. Check each one:
+Check whether existing holds and workarounds are now obsolete:
 
-- `[patch]` entries and git dependencies waiting for an upstream release:
-  if the fix has been released, go back to the registry version;
-- `=` and `<` requirements (found in step 3): the comment or the commit that
-  added them says why; check whether it still holds;
-- `deny.toml`: `[bans] skip` and `skip-tree` entries for duplicates that are
-  gone, and advisory ignores whose crate or version is gone;
-- `--precise` holds from earlier runs (look for them in past commit bodies)
-  are gone after this run's `cargo update`: re-check the reason.
+- `[patch]` entries and git dependencies waiting on an upstream release;
+- `=` and `<` version pins (from Step 3): check the comment or `git log -S`
+  commit that added the pin to see if the reason still holds;
+- `deny.toml`: `[bans] skip` and `skip-tree` entries for resolved duplicates,
+  and `[advisories] ignore` entries that no longer match;
+- `--precise` lockfile holds mentioned in earlier commit messages (which
+  `cargo update` will have cleared): verify the upstream regression was fixed.
 
-Remove what's obsolete in a `build(deps):` commit saying why it's no longer
-needed, or in the compatible-upgrade commit when that's what made it
-obsolete. Report the holds that stay, with their reasons.
+Remove obsolete holds in a `build(deps): ...` commit explaining why the hold is
+no longer needed (or fold into Step 5 when the compatible upgrade resolved it).
+List all remaining holds and their reasons in the report.
 
 ## 10. CI's pinned toolchain
 
-Check that CI pins its Rust version (`RUST_VERSION`, `toolchain: 1.NN.P`, or a
-`rust:1.NN-...` image) and that every job running `cargo clippy` actually uses
-that pinned version, with `components: clippy`, rather than the latest
-`stable` (`references/ci-audit.md`, "Toolchains"). Fix any job that leaves the
-toolchain unpinned or runs clippy on floating `stable`, and when a pinned
-toolchain (stable, beta or nightly) has fallen behind, finish the run by
-bumping it; our repositories pair this with their routine dependency upgrades.
+Verify that CI pins its Rust toolchain and runs `cargo clippy` on that pinned
+version rather than floating `stable`, and bump the pinned toolchain if a newer
+release is out. Follow `references/ci-audit.md` ("Toolchains").

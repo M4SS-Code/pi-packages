@@ -1,16 +1,13 @@
 # CI audit
 
-Run it when asked, or propose it for a repository whose workflows haven't
-changed in months (`git log -1 --format=%cs -- .github .forgejo .gitlab-ci.yml`).
-This file covers what applies everywhere, plus GitHub Actions specifics;
-`references/forgejo.md` covers Forgejo Actions, and code.m4ss.net for our
-repositories. In our repositories, the reference for how things should look
-is whatever is newest across all of them ("Keeping our repositories alike"
-below), not any one repository.
+Run the CI audit when asked, or propose it when workflows haven't been updated
+in months (`git log -1 --format=%cs -- .github .forgejo .gitlab-ci.yml`). This
+file covers general CI rules and GitHub Actions; see `references/forgejo.md`
+for Forgejo Actions and `code.m4ss.net`.
 
-Fix what's wrong and propose what's a matter of taste. Make one commit per
-concern. The body says what was wrong, or for a hardening pass what it
-changes, for example:
+Fix clear issues directly (one commit per concern) and propose changes that
+are a matter of preference. Write commit bodies that state what was wrong or
+what a hardening pass changed:
 
 ```text
 chore(ci): harden CI workflow
@@ -31,220 +28,176 @@ it wasn't known whether they passed.
 
 ### Triggers and runs
 
-- Propose (do not change unasked) restricting `push` to `main` when
-  `pull_request` is present (`on:` with `pull_request`, and `push` restricted
-  to `main`): with `push` on every branch plus `pull_request`, every push to
-  a pull request's branch runs CI twice, though some repositories want CI on
-  branches without a pull request.
-- A concurrency group cancelling superseded runs:
-  `group: ${{ github.workflow }}-${{ github.ref }}` with
+- **Duplicate branch runs**: When `pull_request` is present and `push` is
+  unrestricted, propose (do not change unasked) restricting `push` to `main` so
+  PR branch pushes do not run CI twice.
+- **Concurrency**: Cancel superseded runs with
+  `group: ${{ github.workflow }}-${{ github.ref }}` and
   `cancel-in-progress: true`.
-- `timeout-minutes` on every job.
-- `fail-fast: false` on platform matrices, so one platform's failure doesn't
-  hide the others' results.
-- `pull_request_target`, `workflow_run` and `issue_comment` run with secrets
-  on code or input from outside: flag them.
+- **Timeouts**: Set `timeout-minutes` on every job.
+- **Matrix `fail-fast`**: Set `fail-fast: false` on platform matrices so one
+  platform failure does not cancel the others.
+- **Privileged triggers**: Flag `pull_request_target`, `workflow_run` and
+  `issue_comment` triggers that run with secrets on untrusted code or input.
 
 ### Token and credentials
 
-- Top-level `permissions: contents: read`. A job that needs more gets it on
-  that job (or the workflow, when every job needs it) with a comment saying
-  why, like `id-token: write` for npm trusted publishing.
-- `persist-credentials: false` on `actions/checkout`, unless a later step
-  pushes with the job's token.
-- Secrets passed one by one (`secrets.FOO`), never `secrets: inherit` or
-  `toJSON(secrets)`.
-- No `${{ }}` expansion of values others control (pull request titles, branch
-  names, issue bodies) inside `run:`; pass them through `env:` instead.
+- **Permissions**: Set top-level `permissions: contents: read`. Grant broader
+  permissions only per-job (or workflow-wide if every job requires it) with a
+  comment explaining why (e.g., `id-token: write` for npm trusted publishing).
+- **Checkout credentials**: Set `persist-credentials: false` on
+  `actions/checkout` unless a subsequent step pushes using the job token.
+- **Secrets**: Pass secrets individually (`secrets.FOO`), never with
+  `secrets: inherit` or `toJSON(secrets)`.
+- **Script injection**: Never interpolate untrusted context values (PR titles,
+  branch names, issue bodies) via `${{ }}` inside `run:`; pass them through
+  `env:` variables instead.
 
 ### Pinning
 
-- Every `uses:` pinned to a full commit SHA, with the version in a comment:
-  the most specific version tag pointing at that commit (`# v7.0.1` rather
-  than `# v7`, `# v2.90.1` rather than `# v2`). Only an action used from a
-  branch, because it publishes no releases to pin, gets the branch
-  (`dtolnay/rust-toolchain@<sha> # master`).
-- Existing pins verified, not just well-formed. The SHA must be the commit
-  the comment names: resolve the tag (section "Refreshing pinned actions",
-  step 2) and compare. A tag object's SHA in place of its commit, or twins in
-  `.github/` and `.forgejo/` pinning the same version to different SHAs, are
-  findings. For a branch pin, check that the branch contains the commit. On
-  GitHub, mere existence proves nothing, since commits from forks resolve
-  too:
+- **Actions**: Pin every `uses:` to a full 40-character commit SHA followed by
+  a comment with the most specific release tag (`# v7.0.1`, not `# v7`), or the
+  branch name if the action makes no releases (`dtolnay/rust-toolchain@<sha> # master`).
+- **Verify existing action pins**: Resolve each tag (see "Refreshing pinned
+  actions", step 2) and confirm the SHA matches the commit (not an annotated
+  tag object's SHA, and not a mismatched SHA between `.github/` and `.forgejo/`
+  twins). For branch pins on GitHub, verify the commit belongs to the upstream
+  branch rather than a fork:
   `curl -sS https://api.github.com/repos/<owner>/<repo>/compare/<sha>...<branch> | jq -r .status`
-  must say `ahead` or `identical`. In our repositories' Forgejo workflows,
-  the code.m4ss.net mirror only holds upstream's own commits, so there
-  existence is enough:
-  `curl -sS -o /dev/null -w '%{http_code}' https://code.m4ss.net/api/v1/repos/Actions/<repo>/git/commits/<sha>`
-  (200 or 404).
-- Tools installed by actions or scripts pinned to a version
-  (`tool: cargo-hack@0.6.39`). Downloads use `curl -fsSL`: without `-f`,
-  curl saves an error page as the binary and the step succeeds. Verify a
-  checksum where the project publishes one.
-- Container images (`container:`, `services:`, `docker run`) pinned by
-  digest: `image:tag@sha256:...`, or `image@sha256:... # tag`.
-- The Rust version is pinned in CI (`RUST_VERSION: 1.NN.P` in top-level
-  `env:`, passed as `toolchain: ${{ env.RUST_VERSION }}` to
-  `dtolnay/rust-toolchain`, and `FROM rust:1.NN-...` in any `Dockerfile` CI
-  builds), and the clippy jobs (along with `rustfmt`, `cargo-hack`, `doc` and
-  `build`) actually use that pinned version rather than the latest `stable`.
-  All pinned toolchains are current: stable and beta the latest ones, a
-  nightly not too old (see "Toolchains").
+  must return `ahead` or `identical`. On `code.m4ss.net`, mirrors only hold
+  upstream commits, so checking HTTP 200 is sufficient:
+  `curl -sS -o /dev/null -w '%{http_code}' https://code.m4ss.net/api/v1/repos/Actions/<repo>/git/commits/<sha>`.
+- **Installed tools**: Pin tool versions (`tool: cargo-hack@0.6.39`). Use
+  `curl -fsSL` for downloads (without `-f`, HTTP error pages are saved as 0-exit
+  files) and verify checksums when published.
+- **Containers**: Pin `container:`, `services:` and `docker run` images by
+  digest (`image:tag@sha256:...` or `image@sha256:... # tag`).
+- **Rust toolchains**: Pin the Rust version in CI and ensure `clippy` (along
+  with `rustfmt`, `cargo-hack`, `doc` and `build`) runs on that pinned version,
+  never on floating `stable` (see "Toolchains" below).
 
 ### Runners
 
-- Every runner label names an OS version, never a `-latest` label:
-  `ubuntu-latest`, `macos-latest` and `windows-latest` move to a new release
-  whenever GitHub decides, changing what CI runs on without a commit in the
-  repository. Use the newest version of each: at the time of writing
-  `ubuntu-26.04`, `macos-26` and `windows-2025`. GitHub lists its labels in
-  the README of `actions/runner-images`; a "preview" badge there is no reason
-  to wait.
-- Ask before moving a job that builds release binaries off an older Ubuntu.
-  Binaries need at least the glibc they were built against, and at the time
-  of writing the target is Debian 13 "trixie", with glibc 2.41: Ubuntu 24.04
-  has 2.39, so what it builds runs there, while Ubuntu 26.04 has 2.43, so
-  what it builds doesn't. Revisit the choice once Debian 14 "forky" is the
-  stable release.
+- Pin explicit OS versions (`ubuntu-26.04`, `macos-26`, `windows-2025` at the
+  time of writing; check the `actions/runner-images` README for current
+  labels). Never use moving `-latest` labels (`ubuntu-latest`, `macos-latest`,
+  `windows-latest`).
+- **Ask before upgrading Ubuntu on jobs that build release binaries:** Linux
+  binaries require at least the build host's glibc at runtime. At the time of
+  writing, targeting Debian 13 "trixie" (glibc 2.41) requires staying on
+  `ubuntu-24.04` (glibc 2.39) rather than `ubuntu-26.04` (glibc 2.43) until
+  Debian 14 "forky" is stable.
 
 ### What the jobs run
 
-- `--locked` on every cargo command that builds or tests, and
-  `pnpm install --frozen-lockfile`.
-- clippy over `--all-targets` and the feature combinations that matter,
-  running on the pinned Rust toolchain (`toolchain: ${{ env.RUST_VERSION }}`
-  with `components: clippy`), never floating `stable`; an MSRV job testing
-  with the `rust-version` toolchain.
-- cargo-deny when the repository has a `deny.toml`, with `[graph] targets`
-  matching what CI builds when available: no `targets` for a library (so
-  cargo-deny checks every target), and the exact target triples CI builds when
-  the workflow or a `Dockerfile` it builds produces binaries or container
-  images (`--target <triple>`, or the builder image's own triple when
-  `cargo build` runs without `--target`, such as `x86_64-unknown-linux-musl`
-  on an `amd64` Alpine builder). Repositories that migrated from Alpine to
-  Ubuntu builds often still list `-musl` triples in `deny.toml` while building
-  `-gnu`, or list `aarch64` when CI only builds `x86_64`. Re-run
-  `cargo deny --workspace --all-features check` after aligning `targets`,
-  since the target change can surface a license or advisory in
-  target-specific dependencies or leave an `allow` license or `ignore` entry
-  unused.
-- Node.js versions in the matrix are all maintained releases (the schedule
-  is in the `nodejs/Release` repository): drop end-of-life ones, add the new
-  LTS.
+- Pass `--locked` to every Cargo build/test command and `--frozen-lockfile` to
+  `pnpm install`.
+- Run `clippy` with `--all-targets` and relevant feature combinations on the
+  pinned Rust toolchain (see "Toolchains"), and run an MSRV job with the
+  `rust-version` toolchain.
+- Run `cargo-deny` when `deny.toml` exists, and verify `[graph] targets` in
+  `deny.toml`:
+  - Library: omit `targets` so `cargo-deny` checks all targets.
+  - Binary or container image: `targets` must match the exact target triples CI
+    builds (from `--target <triple>`, `Dockerfile`s, or the builder image's own
+    triple when `cargo build` runs without `--target`, e.g.
+    `x86_64-unknown-linux-musl` on `amd64` Alpine). Watch for stale `-musl` or
+    `aarch64` triples after CI changes. If `deny.toml` is updated, re-run
+    `cargo deny --workspace --all-features check` to catch newly exposed
+    advisories/licenses or unused `allow`/`ignore` entries.
+- Keep Node.js matrix versions aligned with maintained releases from
+  `nodejs/Release` (drop EOL majors, add new LTS).
 
 ### Publishing
 
-- Everything that isn't meant to be published says so, so that a stray
-  `cargo publish` or `pnpm publish -r` can't release it: `publish = false`
-  in its `Cargo.toml` (or `publish.workspace = true`, with the setting in
-  `[workspace.package]`), `"private": true` in its `package.json`. The usual
-  candidates are examples, test harnesses and internal tools in a workspace,
-  the root `package.json` of a pnpm workspace, and applications that get
-  deployed rather than published, like a SvelteKit app or a server binary.
-  cargo-deny relies on the marker too: `[licenses.private] ignore = true`
-  only skips the license check for unpublished crates.
-- Compare what's marked with what's on the registries:
+- Mark every package or crate not meant for registry publication so a stray
+  `cargo publish` or `pnpm publish -r` cannot release it:
+  - Rust: `publish = false` in `Cargo.toml` (or `publish.workspace = true`).
+    (`cargo-deny` also requires this marker for `[licenses.private] ignore = true`.)
+  - Node.js: `"private": true` in `package.json` (including the workspace root,
+    apps, examples and internal tools).
+- Compare local manifests against the registries:
 
   ```sh
-  cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | [.name, (.publish | tostring)] | @tsv'   # [] is publish = false
+  cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | [.name, (.publish | tostring)] | @tsv'   # [] means publish = false
   git ls-files '*package.json' | while read -r f; do jq -r --arg f "$f" '[$f, .name, (.private // false)] | @tsv' "$f"; done
   cargo info -q <crate> --registry crates-io | grep '^repository:'
   npm view <name> repository.url
   ```
 
-  A name on the registry isn't necessarily ours: its repository has to be
-  this one. Something that's neither marked nor published from this
-  repository is probably missing its marker; ask before adding it, since it
-  may be about to get its first release. The commit is `build:`, saying what
-  it keeps from being published.
+  Verify the registry entry's `repository` URL points to this repository (not
+  an unrelated package with the same name). If a crate or package is neither
+  marked private nor published from this repository, ask before adding the
+  marker (in case a first release is planned), then commit as `build: ...`.
 
-- Published crates leave CI files out of the package:
-  `exclude = [".github/", ".forgejo/", "deny.toml"]`. `cargo package --list`
-  shows what ships.
+- In published Rust crates, exclude CI configs from the crate tarball
+  (`exclude = [".github/", ".forgejo/", "deny.toml"]`; verify with
+  `cargo package --list`).
 
-### Other CI
+### Other CI files and tools
 
-- A `.gitlab-ci.yml` in one of our repositories (SKILL.md, "Our
-  repositories"): ours moved from GitLab CI to Forgejo Actions. Point it out
-  and ask.
-- `.github/dependabot.yml` with the `github-actions` ecosystem already opens
-  pull requests bumping the pins. Check for open ones before bumping by hand,
-  and remember that dependabot only touches `.github/`: the Forgejo twins
-  need the same bump by hand.
-
-### Tools
-
-- `zizmor --pedantic .github/workflows` checks most of the above
-  (`unpinned-uses`, `unpinned-images`, `excessive-permissions`, `artipacked`,
-  `ref-version-mismatch`, `template-injection`, `cache-poisoning`, ...). With
-  `GH_TOKEN` set it also runs its online audits, like `impostor-commit` and
-  `known-vulnerable-actions`. If it's missing, `uvx zizmor`,
-  `pipx run zizmor` or `cargo install --locked zizmor`. It doesn't know about
-  Forgejo.
-- `actionlint` catches syntax and expression errors in GitHub workflows.
-- In a pnpm repository, `pnpm outdated --include-github-actions` lists
-  outdated actions in `.github/workflows/`, and
-  `pnpm update --include-github-actions` re-pins them to a commit with the
-  tag in a comment. Check its result like a manual bump.
+- **`.gitlab-ci.yml` in our repositories**: Our repositories migrated from
+  GitLab CI to Forgejo Actions; flag any leftover `.gitlab-ci.yml` and ask.
+- **`.github/dependabot.yml`**: Check for open Dependabot PRs before bumping
+  actions manually, and mirror any Dependabot action bumps into
+  `.forgejo/workflows/` by hand.
+- **Static analysis tools**:
+  - Run `zizmor --pedantic .github/workflows` (set `GH_TOKEN` to enable online
+    checks like `impostor-commit` and `known-vulnerable-actions`; install via
+    `uvx zizmor`, `pipx run zizmor` or `cargo install --locked zizmor`).
+  - Run `actionlint` on `.github/workflows/`.
+  - In pnpm workspaces, `pnpm outdated --include-github-actions` and
+    `pnpm update --include-github-actions` list and update `.github/workflows/`
+    action pins; still verify tags and commit SHAs as below.
 
 ## Refreshing pinned actions
 
-Every couple of months, and sooner for a security fix or a breakage. See when
-it last happened:
-`git log -5 --format='%cs %s' -G'@[0-9a-f]{40}' -- .github .forgejo`.
+Check when action pins were last updated:
+`git log -5 --format='%cs %s' -G'@[0-9a-f]{40}' -- .github .forgejo`. Refresh
+them every couple of months, or immediately for security fixes or breakages:
 
-For each action:
-
-1. Find the newest release. The filter keeps full version tags only, skipping
-   moving major tags (`v7`) and non-version tags (taiki-e/install-action has
-   one per tool):
+1. List the latest full version tags (filtering out moving major tags like `v7`
+   and per-tool tags in `taiki-e/install-action`):
    `git ls-remote --tags --refs https://github.com/<owner>/<repo> | sed 's|.*refs/tags/||' | grep -E '^v?[0-9]+(\.[0-9]+)+$' | sort -V | tail -3`.
-2. Resolve its commit against the action's own repository, never a fork or a
-   web page; that's what makes the SHA verified:
+2. Resolve the tag's commit SHA directly from the upstream repository (for
+   annotated tags, use the dereferenced `^{}` commit SHA, never the tag object
+   SHA):
    `git ls-remote https://github.com/<owner>/<repo> 'refs/tags/<tag>' 'refs/tags/<tag>^{}'`.
-   For an annotated tag, the `^{}` line is the commit: pin that one, not the
-   tag object.
-3. Read the release notes from the pinned version on. Majors can drop inputs,
-   change defaults or move to a newer Node.js runtime that older runners
-   can't run.
-4. Replace every occurrence with the new SHA and comment, in
-   `.github/workflows/` and `.forgejo/workflows/` alike. In our repositories,
-   the code.m4ss.net mirror must have the commit (`references/forgejo.md`).
-5. An action pinned to a branch commit (`# main`) may be waiting for a
-   release with a fix. If a release now contains the commit
-   (`git merge-base --is-ancestor <sha> <tag>` in a clone), move to it.
+3. Read the release notes between the old and new versions for breaking input,
+   default or Node.js runtime changes.
+4. Update the SHA and version comment across `.github/workflows/` and
+   `.forgejo/workflows/` (after confirming the `code.m4ss.net` mirror has the
+   commit; see `references/forgejo.md`).
+5. If an action was pinned to an unreleased branch commit (`# main`), check
+   whether a tagged release now includes that commit
+   (`git merge-base --is-ancestor <sha> <tag>`) and switch to the release tag.
 
-Commit a single action as `chore(ci): upgrade actions/checkout to v7.0.1`,
-and a routine refresh of several as `chore(ci): upgrade the pinned actions`.
-The version comments in the diff already show what moved, so the body only
-says what matters: a security fix, a new Node.js runtime, a changed default.
-A major upgrade that needed workflow changes gets its own commit.
+Commit a single action bump as `chore(ci): upgrade actions/checkout to v7.0.1`
+(or a batch as `chore(ci): upgrade the pinned actions`), noting any security
+fixes, runtime changes or workflow adjustments in the body. Put major action
+upgrades requiring workflow edits in their own commit.
 
 ## Toolchains
 
-CI pins the Rust version it runs `rustfmt`, `clippy`, `cargo-hack`, `doc` and
-`build` with (`RUST_VERSION: 1.NN.P` in top-level `env:`), rather than leaving
-them on floating `stable`. Every new Rust release adds clippy lints, so a
-clippy job that runs on the latest `stable` breaks CI on unrelated commits
-under `-D warnings`.
+CI must pin the Rust version (`RUST_VERSION: 1.NN.P` in top-level `env:` and
+`FROM rust:1.NN-...` in CI `Dockerfile`s) for `rustfmt`, `clippy`,
+`cargo-hack`, `doc` and `build`, rather than using floating `stable` (which
+breaks CI on unrelated PRs whenever a new Rust release adds lints under
+`-D warnings`).
 
-Check every job that runs `cargo clippy` — a dedicated `clippy` job, a
-combined `test` job that runs clippy before the tests, or a cross-platform
-`build` job — to make sure it actually uses the pinned version:
+Verify every job that runs `cargo clippy` (dedicated `clippy` jobs, combined
+`test` jobs, or cross-platform `build` jobs):
 
-- It selects `toolchain: ${{ env.RUST_VERSION }}` on `dtolnay/rust-toolchain`
-  (pinned to a commit on `# master`), never `@stable`, `toolchain: stable`,
-  `rustup update ... stable`, or an omitted `toolchain:` input or step that
-  falls back to whatever `stable` the runner has.
-- It passes `components: clippy` to `rust-toolchain`: when `RUST_VERSION`
-  differs from the runner image's preinstalled toolchain, the action installs
-  with `--profile minimal`, which omits `clippy` unless requested.
-- Only a `test` matrix that exists to test the channels (`stable`, `beta`,
-  `nightly` and the pinned MSRV `1.NN.0`) uses moving channel names, and that
-  job runs `cargo test`, not `cargo clippy`.
+- It sets `toolchain: ${{ env.RUST_VERSION }}` on `dtolnay/rust-toolchain`
+  (pinned to a `# master` commit), never `@stable`, `toolchain: stable`,
+  `rustup update ... stable`, or an omitted `toolchain:` input.
+- It sets `components: clippy` on `rust-toolchain` (required when
+  `RUST_VERSION` differs from the runner image's preinstalled toolchain and
+  installs with `--profile minimal`).
+- Moving channel names (`stable`, `beta`, `nightly`) appear only in `test`
+  matrices that run `cargo test` without `cargo clippy`.
 
-Compare each pin (including `FROM rust:1.NN-...` in `Dockerfile`s CI builds)
-with what the channel ships now:
+Compare pinned toolchains against current upstream releases:
 
 ```sh
 for c in stable beta nightly; do
@@ -252,74 +205,53 @@ for c in stable beta nightly; do
 done
 ```
 
-- **Stable** (`1.99.1`): the latest release.
-- **Beta** (`beta-YYYY-MM-DD`, or a `1.NN.0-beta.N` version): the current
-  beta. One from before the latest stable release belongs to a cycle that is
-  over.
-- **Nightly** (`nightly-YYYY-MM-DD`): it doesn't have to track every day; a
-  few weeks old is fine. Bump it when it predates the latest stable release
-  (about every six weeks), or sooner when something needs a newer one. Pick a
-  date that has every component CI installs (clippy, rustfmt, miri, ...):
-  `rustup toolchain install nightly-YYYY-MM-DD --profile minimal -c <component>`
-  fails when one is missing.
+- **Stable** (`1.99.1`): Bump to the latest stable release.
+- **Beta** (`beta-YYYY-MM-DD` or `1.NN.0-beta.N`): Bump if it predates the
+  latest stable cycle.
+- **Nightly** (`nightly-YYYY-MM-DD`): Bump when it predates the latest stable
+  release (~6 weeks) or when needed sooner. Verify the target date includes all
+  required components (`clippy`, `rustfmt`, `miri`, etc.) with:
+  `rustup toolchain install nightly-YYYY-MM-DD --profile minimal -c <component>`.
 
-To bump one:
+To bump a pinned toolchain:
 
-1. `rustup toolchain install <new> --profile minimal -c clippy -c rustfmt`.
-2. Run the CI commands that use that toolchain with `cargo +<new>`. Fix new
-   warnings in a `style(clippy):` commit first, so that the bump never breaks
-   CI.
-3. Update the version everywhere it's spelled out: the `RUST_VERSION`-style
-   variable, `toolchain:` inputs, job names (`clippy / 1.99.1`; a job's
-   `name` can't read `env`, so it repeats the version) and cache keys.
-4. Commit as `chore(ci): upgrade Rust to v1.NN.P`, or
-   `chore(ci): upgrade Rust beta to ...` and
-   `chore(ci): upgrade Rust nightly to YYYY-MM-DD`.
-
-In our repositories, the code.m4ss.net runner images come with one stable
-preinstalled. A workflow pinned to that version skips a download, so the
-images and the repositories usually move together, but nothing requires it:
-a job asking for another version gets it installed (`references/forgejo.md`).
+1. Install it locally:
+   `rustup toolchain install <new> --profile minimal -c clippy -c rustfmt`.
+2. Run CI's commands with `cargo +<new>`. If new clippy warnings appear, fix
+   them first in a separate `style(clippy): ...` commit.
+3. Update the version string everywhere it appears: `RUST_VERSION`,
+   `toolchain:` inputs, job `name` strings (e.g., `clippy / 1.99.1`),
+   `Dockerfile`s and cache keys.
+4. Commit as `chore(ci): upgrade Rust to v1.NN.P` (or `... Rust beta to ...` /
+   `... Rust nightly to YYYY-MM-DD`).
 
 ## Keeping our repositories alike
 
-In our repositories (SKILL.md, "Our repositories"), `deny.toml` and the CI
-workflows follow a shared form, so that a fix made once applies everywhere and
-nothing differs just because it happened to. Before changing either, and as
-part of every audit:
+In our repositories (`SKILL.md`, "Our repositories"), keep `deny.toml` and CI
+workflows consistent across sibling projects:
 
-1. Read the siblings' versions. The public repositories are under
-   github.com/M4SS-Code, skipping forks
-   (`curl -sS 'https://api.github.com/orgs/M4SS-Code/repos?type=sources&per_page=100&sort=pushed' | jq -r '.[] | [.name, .pushed_at, .language] | @tsv'`).
-   On code.m4ss.net, almost all of our non-mirror repositories are private,
-   so querying
-   `https://code.m4ss.net/api/v1/repos/search?mode=source&sort=updated&order=desc&limit=50`
-   only helps with a token (`-H "Authorization: token $FORGEJO_TOKEN"`): ask
-   for one when private siblings matter. Fetch the files from
-   `https://code.m4ss.net/Mirror/<repo>/raw/branch/main/<path>`,
-   `https://raw.githubusercontent.com/M4SS-Code/<repo>/HEAD/<path>`,
-   `https://code.m4ss.net/<owner>/<repo>/raw/branch/<branch>/<path>`, or with
-   a shallow clone. Three or four recently maintained repositories of the
-   same kind (a Rust library, a Rust binary, a pnpm app) are enough.
-2. Work out the shared form: what they agree on and, where they differ, which
-   way the most recently maintained ones went. The form evolves, and the
-   newest changes show where it's heading.
-3. Compare this repository with it, section by section:
-   - `deny.toml`: the same sections and settings, in the same order and style.
-     Only what follows from the project and its dependencies differs:
-     `[graph] targets` matching the target triples this repository's CI builds
-     (omitted in libraries, and kept as is when an application's CI has no
-     build job), the licenses in `allow`, and advisory ignores with their
-     reasons.
-   - Workflows: the same triggers, concurrency, permissions, job and step
-     names, layout, actions pinned to the same commits, toolchain pins. Only
-     what the project needs differs: its feature combinations, services,
-     extra jobs.
-4. Bring what differs without a reason in line, one concern per commit like
-   any other CI change. A difference with a reason (a comment, a commit
-   explaining it, a release build on an older Ubuntu) stays.
-5. When the comparison shows that the shared form itself needs fixing (a
-   missing hardening, a stale pin, a setting that's better another way), fix
-   it here and list in the report every sibling that needs the same change,
-   so that it gets rolled out everywhere instead of making this repository
-   the odd one out. If the user asks, apply it to each of them the same way.
+1. **Fetch 3–4 recently updated sibling repositories** of the same project type
+   (Rust library, Rust binary, or pnpm app):
+   - Public siblings on GitHub (excluding forks):
+     `curl -sS 'https://api.github.com/orgs/M4SS-Code/repos?type=sources&per_page=100&sort=pushed' | jq -r '.[] | [.name, .pushed_at, .language] | @tsv'`
+   - Private siblings on `code.m4ss.net` (requires `$FORGEJO_TOKEN`; ask for one
+     if needed):
+     `curl -sS -H "Authorization: token $FORGEJO_TOKEN" 'https://code.m4ss.net/api/v1/repos/search?mode=source&sort=updated&order=desc&limit=50'`
+   - Read files from
+     `https://raw.githubusercontent.com/M4SS-Code/<repo>/HEAD/<path>`,
+     `https://code.m4ss.net/Mirror/<repo>/raw/branch/main/<path>`, or
+     `https://code.m4ss.net/<owner>/<repo>/raw/branch/<branch>/<path>`.
+2. **Identify the canonical template**: Follow the structure and conventions
+   used by the most recently maintained siblings.
+3. **Compare section by section**:
+   - `deny.toml`: Match section order and settings; only `[graph] targets`,
+     `[licenses] allow` and `[advisories] ignore` should differ based on the
+     project.
+   - Workflows: Match triggers, concurrency, permissions, job/step names,
+     pinned action SHAs and toolchain pins; keep only project-specific features,
+     services, or intentional differences (such as `ubuntu-24.04` release binary
+     builds).
+4. **Align unintended drift**: Commit fixes one concern per commit.
+5. **Propagate improvements**: If the shared template itself has a flaw (missing
+   hardening, outdated pin, better setting), fix it in this repository and list
+   every sibling repository that needs the same fix in the report.
