@@ -131,23 +131,23 @@ questions at the top of the report.
 The repository's own commit history takes precedence (per the `commit` skill).
 Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
 
-| Change                                    | Subject                                                    |
-| ----------------------------------------- | ---------------------------------------------------------- |
-| MSRV bump (breaking change)               | `build!: bump MSRV to v1.NN`                               |
-| Lints enabled by the MSRV bump            | `style(clippy): fix warnings enabled by the MSRV bump`     |
-| Rust dependencies within declared ranges  | `build(deps): upgrade semver compatible Rust dependencies` |
-| Node dependencies within declared ranges  | `build(deps): upgrade semver compatible Node dependencies` |
-| Single major upgrade                      | `build(deps): upgrade <name> to v<major>`                  |
-| Version younger than a day (security fix) | `build(deps): upgrade <name> to v<version>`                |
-| Coupled major upgrades                    | `build(deps): upgrade <a> and <b> to v<major>`             |
-| Family of coupled crates                  | `build(deps): upgrade RustCrypto dependencies`             |
-| Ignore an inapplicable advisory           | `build(deps): ignore RUSTSEC-YYYY-NNNN`                    |
-| Allow a license in `deny.toml`            | `build(deps): allow the <license> license`                 |
-| Pinned Rust toolchain in CI               | `chore(ci): upgrade Rust to v1.NN.P`                       |
-| Single pinned action                      | `chore(ci): upgrade actions/checkout to v7.0.1`            |
-| Routine refresh of pinned actions         | `chore(ci): upgrade the pinned actions`                    |
-| Runner image                              | `chore(ci): run on Ubuntu 26.04`                           |
-| Toolchains in `Actions/ci-images`         | `ci: bump Rust to 1.NN.P and pnpm to 12.X.Y`               |
+| Change                                    | Subject                                                         |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| MSRV bump (breaking change)               | `build!: bump MSRV to v1.NN`                                    |
+| Lints enabled by the MSRV bump            | `style(clippy): fix warnings enabled by the MSRV bump`          |
+| Rust dependencies within declared ranges  | `build(deps): upgrade semver compatible Rust dependencies`      |
+| Node dependencies within declared ranges  | `build(deps): upgrade semver compatible Node dependencies`      |
+| Single major upgrade                      | `build(deps): upgrade <name> to v<major>`                       |
+| Version younger than a day (security fix) | `build(deps): upgrade <name> to v<version>`                     |
+| Coupled major upgrades                    | `build(deps): upgrade <a> and <b> to v<major>`                  |
+| Family of coupled crates                  | `build(deps): upgrade RustCrypto dependencies`                  |
+| Ignore an inapplicable advisory           | `build(deps): ignore RUSTSEC-YYYY-NNNN`                         |
+| Allow a license in `deny.toml`            | `build(deps): allow the <license> license`                      |
+| Pinned Rust toolchain in CI               | `chore(ci): upgrade Rust to v1.NN.P`                            |
+| Single pinned action                      | `chore(ci): upgrade actions/checkout to v7.0.1`                 |
+| Routine refresh of pinned actions         | `chore(ci): upgrade the pinned actions`                         |
+| Runner image                              | `chore(ci): run on Ubuntu 26.04`                                |
+| Toolchains in `Actions/ci-images`         | `ci: bump Rust to 1.NN.P, Node.js to 24.X.Y and pnpm to 12.X.Y` |
 
 - `<major>` is the compatibility-defining prefix: `v0.23` for `0.23.x`, `v2`
   for `2.x`.

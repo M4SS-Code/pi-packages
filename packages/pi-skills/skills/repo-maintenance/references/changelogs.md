@@ -88,8 +88,9 @@ the target version. Check sources in this order and stop at the first source
 that covers the target version:
 
 ```sh
-# Filename filter matching standard changelog names
-FILTER='(^|/)((changelog|changes|history|news|releases|release[-_]?notes)(\.(md|rst|txt|adoc))?$|changelog/)'
+# Filename filter matching standard changelog names, including versioned
+# ones such as CHANGELOG-0.9.md or changes_v2.x.rst
+FILTER='(^|/)((changelog|changes|history|news|releases|release[-_]?notes)([-_]v?[0-9][0-9.x]*)?(\.(md|rst|txt|adoc))?$|changelog/)'
 ```
 
 1. **Published package files**:
