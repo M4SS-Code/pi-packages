@@ -24,9 +24,8 @@ Run every pnpm command that resolves, installs or fixes (`update`, `add`,
 pnpm --config.minimumReleaseAge=1440 --config.trustPolicy=no-downgrade <command>
 ```
 
-Without these flags, pnpm does not enforce the gate: pnpm 12.14 installed a
-release published the same morning and added it to `minimumReleaseAgeExclude`
-on its own, with no error. `trustPolicy=no-downgrade` makes pnpm fail instead
+Without these flags, pnpm silently installs releases younger than a day and
+adds them to `minimumReleaseAgeExclude`. `trustPolicy=no-downgrade` makes pnpm fail instead
 of installing a version with weaker publishing trust (for example, no
 provenance) than the version it replaces.
 
@@ -162,8 +161,8 @@ remaining advisory:
 
 ## 4. Commit the compatible upgrade
 
-1. Remove obsolete exact-version entries from `minimumReleaseAgeExclude` (versions
-   now older than a day or no longer in `pnpm-lock.yaml`; see Step 9).
+1. Remove obsolete `minimumReleaseAgeExclude` entries (Step 9, "Standing
+   holds").
 2. Verify the lockfile passes strict CI checks:
 
    ```sh
@@ -221,8 +220,7 @@ aligned with their corresponding library major.
 
 For each major upgrade (or group):
 
-1. Audit the changelog, migration guide, `npm diff` from the post-Step-4 locked
-   version, and local usage (`references/changelogs.md`).
+1. Audit the release diff and changelog (`references/changelogs.md`).
 2. Upgrade with strict flags (`pnpm ... update -r --latest <name>...` or
    `pnpm ... add <name>@^<major>` in the target workspace package). If peer
    dependencies in the ecosystem do not yet support the new major, revert, skip

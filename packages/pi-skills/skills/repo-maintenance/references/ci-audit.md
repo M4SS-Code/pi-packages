@@ -1,9 +1,7 @@
 # CI audit
 
-Run the CI audit when asked, or propose it when workflows haven't been updated
-in months (`git log -1 --format=%cs -- .github .forgejo .gitlab-ci.yml`). This
-file covers general CI rules and GitHub Actions; see `references/forgejo.md`
-for Forgejo Actions and `code.m4ss.net`.
+This file covers general CI rules and GitHub Actions. Forgejo Actions and
+`code.m4ss.net` are in `references/forgejo.md`.
 
 Fix clear issues directly (one commit per concern) and propose changes that
 are a matter of preference. Write commit bodies that state what was wrong or
@@ -59,9 +57,8 @@ it wasn't known whether they passed.
   a comment with the most specific release tag (`# v7.0.1`, not `# v7`), or the
   branch name if the action makes no releases (`dtolnay/rust-toolchain@<sha> # master`).
 - **Verify existing action pins**: Resolve each tag (see "Refreshing pinned
-  actions", step 2) and confirm the SHA matches the commit (not an annotated
-  tag object's SHA, and not a mismatched SHA between `.github/` and `.forgejo/`
-  twins). For branch pins on GitHub, verify the commit belongs to the upstream
+  actions", step 2) and confirm the pinned SHA is the dereferenced commit and is
+  the same in `.github/` and `.forgejo/` twins. For branch pins on GitHub, verify the commit belongs to the upstream
   branch rather than a fork:
   `curl -sS https://api.github.com/repos/<owner>/<repo>/compare/<sha>...<branch> | jq -r .status`
   must return `ahead` or `identical`. On `code.m4ss.net`, mirrors only hold
@@ -104,9 +101,7 @@ it wasn't known whether they passed.
 
 - **Containers**: Pin `container:`, `services:` and `docker run` images by
   digest (`image:tag@sha256:...` or `image@sha256:... # tag`).
-- **Rust toolchains**: Pin the Rust version in CI and ensure `clippy` (along
-  with `rustfmt`, `cargo-hack`, `doc` and `build`) runs on that pinned version,
-  never on floating `stable` (see "Toolchains" below).
+- **Rust toolchains**: Pin the Rust version (see "Toolchains").
 
 ### Runners
 
@@ -141,20 +136,14 @@ it wasn't known whether they passed.
 - Keep Node.js matrix versions aligned with maintained releases from
   `nodejs/Release` (drop EOL majors, add new LTS).
 - Give every job or matrix entry that caches build outputs (such as Cargo's
-  `target/`) a distinct `actions/cache` primary `key` (distinguishing the job
-  or build profile, toolchain, runner OS/arch or target triple, and matrix
-  dimensions alongside `hashFiles('Cargo.lock')`). `actions/cache` never
-  updates an existing key on an exact hit, and on a cold miss concurrent jobs
-  collide: GitHub Actions is first-writer-wins (the fastest job locks in the
-  key and the others skip saving with `"Cache already exists"`), whereas
-  Forgejo Actions is last-writer-wins (each job uploads and overwrites the
-  previous entry). If two jobs that build different artifacts share a key (e.g.
-  `test` on `ubuntu-26.04` and a release `build` on `ubuntu-24.04`, a `live`
-  job and `test`, or an `msrv` job accidentally left on
-  `${{ env.RUST_VERSION }}`), one job either prevents the other from saving its
-  artifacts or populates the cache from the wrong build/OS. Content-addressed
-  package store caches (`setup-node` with `cache: pnpm`) have identical
-  contents for a given lockfile and can share a key.
+  `target/`) its own `actions/cache` `key`, built from the job or build
+  profile, toolchain, runner OS/arch or target triple, and matrix dimensions
+  plus `hashFiles('Cargo.lock')`. With a shared key, one job either cannot
+  save its cache or overwrites it with another build's output. Common
+  collisions: `test` and a release `build` on different Ubuntu versions, a
+  `live` job and `test`, and an `msrv` job whose key uses
+  `${{ env.RUST_VERSION }}`. Package-store caches (`setup-node` with
+  `cache: pnpm`) may share a key.
 
 ### Publishing
 
@@ -205,8 +194,7 @@ Check when action pins were last updated:
 `git log -5 --format='%cs %s' -G'@[0-9a-f]{40}' -- .github .forgejo`. Refresh
 them every couple of months, or immediately for security fixes or breakages:
 
-1. List the latest full version tags (filtering out moving major tags like `v7`
-   and per-tool tags in `taiki-e/install-action`):
+1. List the latest full version tags:
    `git ls-remote --tags --refs https://github.com/<owner>/<repo> | sed 's|.*refs/tags/||' | grep -E '^v?[0-9]+(\.[0-9]+)+$' | sort -V | tail -3`.
 2. Resolve the tag's commit SHA directly from the upstream repository (for
    annotated tags, use the dereferenced `^{}` commit SHA, never the tag object
@@ -221,18 +209,14 @@ them every couple of months, or immediately for security fixes or breakages:
    whether a tagged release now includes that commit
    (`git merge-base --is-ancestor <sha> <tag>`) and switch to the release tag.
 
-Commit a single action bump as `chore(ci): upgrade actions/checkout to v7.0.1`
-(or a batch as `chore(ci): upgrade the pinned actions`), noting any security
-fixes, runtime changes or workflow adjustments in the body. Put major action
+Use the subjects in `SKILL.md`, "Commit subjects", noting any security fixes, runtime changes or workflow adjustments in the body. Put major action
 upgrades requiring workflow edits in their own commit.
 
 ## Toolchains
 
 CI must pin the Rust version (`RUST_VERSION: 1.NN.P` in top-level `env:` and
 `FROM rust:1.NN-...` in CI `Dockerfile`s) for `rustfmt`, `clippy`,
-`cargo-hack`, `doc` and `build`, rather than using floating `stable` (which
-breaks CI on unrelated PRs whenever a new Rust release adds lints under
-`-D warnings`).
+`cargo-hack`, `doc` and `build`, rather than using floating `stable`.
 
 Verify every job that runs `cargo clippy` (dedicated `clippy` jobs, combined
 `test` jobs, or cross-platform `build` jobs):
@@ -276,8 +260,7 @@ To bump a pinned toolchain:
 
 ## Keeping our repositories alike
 
-In our repositories (`SKILL.md`, "Our repositories"), keep `deny.toml` and CI
-workflows consistent across sibling projects:
+Before changing `deny.toml` or CI in our repositories, compare with siblings:
 
 1. **Fetch 3–4 recently updated sibling repositories** of the same project type
    (Rust library, Rust binary, or pnpm app):
@@ -300,7 +283,7 @@ workflows consistent across sibling projects:
      pinned action SHAs and toolchain pins; keep only project-specific features,
      services, or intentional differences (such as `ubuntu-24.04` release binary
      builds).
-4. **Align unintended drift**: Commit fixes one concern per commit.
+4. **Align unintended drift**, one concern per commit.
 5. **Propagate improvements**: If the shared template itself has a flaw (missing
    hardening, outdated pin, better setting), fix it in this repository and list
    every sibling repository that needs the same fix in the report.

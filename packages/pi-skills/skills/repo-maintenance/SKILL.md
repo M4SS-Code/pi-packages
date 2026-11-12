@@ -31,7 +31,7 @@ the directory containing `pnpm-lock.yaml`). Review every major upgrade with
 `references/changelogs.md`.
 
 Run the CI audit when asked, or propose it when the workflows haven't changed in
-months.
+months (`git log -1 --format=%cs -- .github .forgejo .gitlab-ci.yml`).
 
 ## Our repositories
 

@@ -9,10 +9,9 @@ syntax with three differences on every Forgejo instance:
 - Always use full URLs in `uses:` (bare `owner/repo` resolves against the
   instance's `DEFAULT_ACTIONS_URL`).
 
-**Scope warning:** Everything below applies **only** to our repositories
-(`SKILL.md`, "Our repositories"). Never reference `code.m4ss.net`, its mirrors
-or its runner images in an external repository; use that repository's own
-instance mirrors and runner labels (ask if unknown).
+**Scope:** The rest of this file applies only to our repositories (`SKILL.md`,
+"Our repositories"). In an external repository, use its own instance's mirrors
+and runner labels (ask if unknown).
 
 ## `code.m4ss.net`
 
@@ -51,18 +50,18 @@ All non-GitHub-specific rules in `references/ci-audit.md` apply here as well.
 
    Mirrors available at the time of writing:
 
-   | Repository          | Upstream                                   | Notes                                                        |
-   | ------------------- | ------------------------------------------ | ------------------------------------------------------------ |
-   | `checkout`          | `actions/checkout`                         |                                                              |
-   | `setup-node`        | `actions/setup-node`                       |                                                              |
-   | `setup-python`      | `actions/setup-python`                     | Requires egress to `github.com` and `pypi.org`               |
-   | `cache`             | `actions/cache`                            | Manual copy (not a live mirror due to `actions/cache#1795`)  |
-   | `rust-toolchain`    | `dtolnay/rust-toolchain`                   | Pinned to `# master`                                         |
-   | `install-action`    | `taiki-e/install-action`                   | Filter for version tags (repo also tags tool names)          |
-   | `cargo-deny-action` | `EmbarkStudios/cargo-deny-action`          | Docker action                                                |
-   | `upload-artifact`   | `code.forgejo.org/forgejo/upload-artifact` | Exception: Forgejo fork (versioned separately from GitHub's) |
-   | `cache-nix-action`  | `nix-community/cache-nix-action`           |                                                              |
-   | `ci-images`         | —                                          | Runner container images (see below)                          |
+   | Repository          | Upstream                                   | Notes                                                       |
+   | ------------------- | ------------------------------------------ | ----------------------------------------------------------- |
+   | `checkout`          | `actions/checkout`                         |                                                             |
+   | `setup-node`        | `actions/setup-node`                       |                                                             |
+   | `setup-python`      | `actions/setup-python`                     | Requires egress to `github.com` and `pypi.org`              |
+   | `cache`             | `actions/cache`                            | Manual copy (not a live mirror due to `actions/cache#1795`) |
+   | `rust-toolchain`    | `dtolnay/rust-toolchain`                   |                                                             |
+   | `install-action`    | `taiki-e/install-action`                   |                                                             |
+   | `cargo-deny-action` | `EmbarkStudios/cargo-deny-action`          | Docker action                                               |
+   | `upload-artifact`   | `code.forgejo.org/forgejo/upload-artifact` | Forgejo fork, versioned separately                          |
+   | `cache-nix-action`  | `nix-community/cache-nix-action`           |                                                             |
+   | `ci-images`         | —                                          | Runner container images (see below)                         |
 
    If a workflow needs an unmirrored action (`download-artifact`,
    `Swatinem/rust-cache`, etc.), stop and ask the user to mirror it first. Note
@@ -157,7 +156,5 @@ When updating pinned toolchains in `Actions/ci-images`:
    skopeo manifest-digest <scratch>/manifest.json
    ```
 
-5. Commit as:
-   `ci: bump Rust to 1.NN.P, Node.js to 24.X.Y and pnpm to 12.X.Y`.
-   (`ci-images` and repository workflow pins can be bumped together or
-   independently.)
+5. Commit per `SKILL.md`, "Commit subjects". `ci-images` and workflow pins can
+   be bumped together or separately.

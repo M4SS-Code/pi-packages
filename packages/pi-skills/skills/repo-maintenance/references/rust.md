@@ -1,8 +1,7 @@
 # Rust dependencies
 
-Follow these steps in order: the MSRV determines what the compatible upgrade
-locks, and both determine which major upgrades apply. If `Cargo.lock` is not
-tracked in git, skip the compatible-upgrade commit and run the remaining steps.
+Follow these steps in order. If `Cargo.lock` is not tracked in git, skip the
+compatible-upgrade commit and run the remaining steps.
 
 Create commits in this order (omit any step that has no changes):
 
@@ -25,9 +24,6 @@ Inspect the repository configuration:
 
 - **MSRV**: `rust-version` in `[workspace.package]` or each `[package]` (if
   set).
-- **Resolver**: `resolver = "3"` (the default for `edition = "2024"`) respects
-  `rust-version`; `"2"` and older ignore it. Virtual workspaces set `resolver`
-  in `[workspace]`.
 - **Advisory tool**: Use `cargo-deny` if `deny.toml` exists, otherwise
   `cargo-audit`. Install if missing (`cargo install --locked cargo-deny` or
   `cargo-audit`). Put advisory ignores only in `deny.toml`; never create or
@@ -80,13 +76,9 @@ If the licenses check already fails, a locked dependency uses a license that
 agrees, add it to `[licenses] allow` as the first commit,
 `build(deps): allow the <license> license`.
 
-(`dups.sh` uses `cargo tree` rather than `Cargo.lock` so unused optional
-dependencies are ignored.)
-
 ## 2. Upgrade within the declared ranges (working tree only)
 
-**State note:** Step 2 updates `Cargo.lock` in the working tree so Step 3 can
-inspect what remains. Do **not** stage or commit `Cargo.lock` until Step 5.
+Do **not** stage or commit `Cargo.lock` until Step 5.
 
 **Release cooldown:** Never lock a version published less than a day ago,
 unless it fixes an applicable security advisory (Step 6). Cargo enforces this
@@ -121,7 +113,7 @@ edits `fetch`, `check`, `build`, `clippy`, `test` and `tree`. Never write
    The cooldown prefix, the `+stable` toolchain and the MSRV prefix from this
    step are called the **Step 2 environment** below.
 
-2. Update `Cargo.lock` without committing:
+2. Update `Cargo.lock`:
 
    ```sh
    CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day" cargo update
@@ -132,8 +124,7 @@ edits `fetch`, `check`, `build`, `clippy`, `test` and `tree`. Never write
 
 ## 3. Read what's left
 
-Run a verbose dry-run against the updated working-tree lockfile to see what
-Step 2 could not update:
+List what Step 2 could not update:
 
 ```sh
 CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day" cargo update --dry-run --verbose 2>&1 | grep -E 'Unchanged|requires Rust'
@@ -221,9 +212,8 @@ others in Step 6.
   1.89 covers all three; the latest stable is 1.99.1. Bump the MSRV to 1.89?
   ```
 
-- **If the user declines (or in a non-interactive run):** Proceed to Step 5,
-  list the held-back crates in the report, and (if non-interactive) place the
-  MSRV question at the top of the report.
+- **If the user declines (or in a non-interactive run):** Proceed to Step 5
+  and list the held-back crates in the report.
 
 ### If the user approves the MSRV bump
 
@@ -403,10 +393,9 @@ Check which other direct dependencies depend on the old major:
 For each upgrade (or coupled group):
 
 1. Update the version requirement in `Cargo.toml` (preserving the existing
-   specifier style, e.g. `"0.23"` or `"2"`) and run `cargo fetch` with the
-   Step 2 environment.
-   `cargo fetch` resolves `Cargo.lock` and downloads the `.crate` without
-   running build scripts or proc-macros. If resolution requires a higher MSRV,
+   specifier style, e.g. `"0.23"` or `"2"`) and run `cargo fetch` (not
+   `check` or `build`, which run build scripts) with the Step 2 environment.
+   If resolution requires a higher MSRV,
    revert `Cargo.toml` and `Cargo.lock` and add it to Step 4's MSRV prompt.
 2. Audit the release diff and changelog (`references/changelogs.md`).
 3. Run `cargo check --workspace --all-targets --all-features` and adapt code to
