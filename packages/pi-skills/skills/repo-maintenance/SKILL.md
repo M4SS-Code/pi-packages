@@ -61,7 +61,10 @@ Two rules apply to our repositories:
 - Record the starting commit (`git rev-parse HEAD`, called `<base>` below),
   check `git status --short` (stop and ask if files the run will touch are
   already dirty), and create a temporary directory outside the repository
-  (`mktemp -d`, called `<scratch>` below) for baselines.
+  (`mktemp -d`, called `<scratch>` below). Put every temporary file in
+  `<scratch>`: baselines, lockfile copies, cloned upstream repositories and
+  `git worktree` checkouts. Never create other paths in `/tmp`. At the end of
+  the run, remove any worktrees (`git worktree remove`) and then `<scratch>`.
 - Treat code in releases under review as untrusted: read it, and never build,
   test, install or execute anything from it before review.
 - Use `curl` against `https://api.github.com/...` or
@@ -139,6 +142,7 @@ Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
 | Coupled major upgrades                    | `build(deps): upgrade <a> and <b> to v<major>`             |
 | Family of coupled crates                  | `build(deps): upgrade RustCrypto dependencies`             |
 | Ignore an inapplicable advisory           | `build(deps): ignore RUSTSEC-YYYY-NNNN`                    |
+| Allow a license in `deny.toml`            | `build(deps): allow the <license> license`                 |
 | Pinned Rust toolchain in CI               | `chore(ci): upgrade Rust to v1.NN.P`                       |
 | Single pinned action                      | `chore(ci): upgrade actions/checkout to v7.0.1`            |
 | Routine refresh of pinned actions         | `chore(ci): upgrade the pinned actions`                    |
@@ -167,6 +171,9 @@ End the run with a report covering:
 - items deliberately left unchanged: skipped majors, ignored advisories, active
   release-age exceptions, versions held back by the MSRV, and standing holds
   (`[patch]`, `=` pins, overrides), each with its reason;
+- CI gaps noticed during the run, even when no CI audit was requested (for
+  example, no MSRV job for a library published to crates.io or npm, or
+  `cargo-deny` run without `--workspace`);
 - new duplicate crate versions introduced by the run, the offending crates, and
   each offender's upstream status;
 - in our repositories: drift aligned with siblings, and any sibling repositories

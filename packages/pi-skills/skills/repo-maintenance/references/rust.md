@@ -7,6 +7,7 @@ tracked in git, skip the compatible-upgrade commit and run the remaining steps.
 Create commits in this order (omit any step that has no changes):
 
 ```text
+build(deps): allow the <license> license    (the baseline already needs it)
 build!: bump MSRV to v1.NN
 style(clippy): fix warnings enabled by the MSRV bump
 refactor: ...                        (code that was waiting on the new MSRV)
@@ -76,26 +77,43 @@ dependencies are ignored.)
 **State note:** Step 2 updates `Cargo.lock` in the working tree so Step 3 can
 inspect what remains. Do **not** stage or commit `Cargo.lock` until Step 5.
 
-1. Check whether Cargo's resolver respects the MSRV:
+**Release cooldown:** Never lock a version published less than a day ago,
+unless it fixes an applicable security advisory (Step 6). Cargo enforces this
+with `CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day"`. Prefix **every** `cargo`
+command that can change `Cargo.lock` with it: `update`, and after manifest
+edits `fetch`, `check`, `build`, `clippy`, `test` and `tree`. Never write
+`global-min-publish-age` into `.cargo/config.toml`.
+
+1. Check that the cooldown is active and whether the resolver respects the
+   MSRV:
 
    ```sh
-   cargo update --dry-run 2>&1 | grep Locking
+   cargo --version
+   CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day" cargo update --dry-run 2>&1 | grep -E 'Locking|min-publish-age'
    ```
 
-   - `Locking N packages to highest Rust 1.NN compatible versions`: MSRV is
-     respected.
-   - `Locking N packages to highest compatible versions` when `rust-version`
-     is set: the resolver ignores MSRV. Prefix **every** subsequent `cargo`
-     command that can touch `Cargo.lock` (`update`, and after manifest edits
-     `fetch`, `check`, `build`, `clippy`, `test`, `tree`) with
-     `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback`. Note in the final
-     report that setting `resolver = "3"` makes this automatic once MSRV is
-     `>= 1.84`.
+   - **Cooldown:** The `Locking` line must end with `as of 24 hours ago`. If
+     instead Cargo prints
+     `warning: ignoring registry.global-min-publish-age`, it is older than
+     1.100 and resolves without the cooldown. Run every command listed above
+     with `cargo +stable` instead (install it with
+     `rustup toolchain install stable --profile minimal` if needed) and check
+     again.
+   - **MSRV:** If the `Locking` line says `highest Rust 1.NN compatible`, the
+     MSRV is respected. If it says only `highest compatible` while
+     `rust-version` is set, the resolver ignores the MSRV: also prefix every
+     command listed above with
+     `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback`, and note in the
+     final report that setting `resolver = "3"` makes this automatic once the
+     MSRV is `>= 1.84`.
+
+   The cooldown prefix, the `+stable` toolchain and the MSRV prefix from this
+   step are called the **Step 2 environment** below.
 
 2. Update `Cargo.lock` without committing:
 
    ```sh
-   cargo update
+   CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day" cargo update
    ```
 
    If git dependencies (`git = "..."` or `[patch]`) moved to a newer commit,
@@ -107,11 +125,14 @@ Run a verbose dry-run against the updated working-tree lockfile to see what
 Step 2 could not update:
 
 ```sh
-cargo update --dry-run --verbose 2>&1 | grep -E 'Unchanged|requires Rust'
+CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day" cargo update --dry-run --verbose 2>&1 | grep -E 'Unchanged|requires Rust'
 ```
 
 Classify each output line:
 
+- `Unchanged zstd-sys v2.1.2 (available: v2.1.3, published 40 minutes ago)`:
+  Compatible release held back by the release cooldown. Leave it, and list it
+  in the report. If it fixes an applicable advisory, handle it in Step 6.
 - `Unchanged ctutils v0.4.2 (available: v0.4.8, requires Rust 1.87)`:
   Compatible release held back by the MSRV (reported for both direct and
   transitive dependencies). Handle in Step 4.
@@ -250,6 +271,13 @@ others in Step 6.
    - If CI has an MSRV job, run its commands with the MSRV toolchain
      (`rustup toolchain install 1.NN --profile minimal`) to catch crates that
      understate `rust-version`.
+   - If a crate published to crates.io (Step 1, "Published crates") sets
+     `rust-version` but CI has no MSRV job, run
+     `cargo +1.NN check --locked --workspace --all-features` with the MSRV
+     toolchain anyway, and list the missing MSRV job in the report. Do not add
+     the job unless the user asked for a CI audit (`references/ci-audit.md`,
+     "What the jobs run"). Binaries and unpublished crates do not need an MSRV
+     job.
    - Run `cargo deny --workspace --all-features check` (checks licenses, bans
      and advisories). Stop and ask if a new dependency introduces an unallowed
      license.
@@ -298,6 +326,12 @@ For each vulnerability or `unsound` advisory:
      the advisory in that commit's body.
    - Fix requires a transitive dependency to upgrade: run the upstream check
      from Step 8.
+   - Fix is a compatible release held back by the release cooldown (Step 3):
+     if the advisory applies (next point), audit the release diff
+     (`references/changelogs.md`), then lock exactly that version with
+     `CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow cargo update -p <crate> --precise <version>`.
+     Commit it on its own as
+     `build(deps): upgrade <crate> to v<version>`, citing the advisory.
 2. **Check whether it affects this repository:** Read the advisory
    (`https://rustsec.org/advisories/<ID>`) for affected functions, features and
    platforms. Check whether our code calls the function, enables the feature
@@ -325,8 +359,8 @@ For other advisory types:
 
 - **`unmaintained`**: Report the crate and the alternatives listed in the
   advisory. Ignore in `deny.toml` only if the user asks.
-- **`yanked`**: Run `cargo update -p <crate>`. Report if no compatible unyanked
-  version exists.
+- **`yanked`**: Run `cargo update -p <crate>` with the Step 2 environment.
+  Report if no compatible unyanked version exists.
 - **`malicious`**: Stop immediately without compiling anything that builds the
   crate (build scripts and proc-macros execute during `cargo check`/`build`)
   and report to the user.
@@ -352,8 +386,8 @@ Check which other direct dependencies depend on the old major:
 For each upgrade (or coupled group):
 
 1. Update the version requirement in `Cargo.toml` (preserving the existing
-   specifier style, e.g. `"0.23"` or `"2"`) and run `cargo fetch` (with
-   `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback` if needed in Step 2).
+   specifier style, e.g. `"0.23"` or `"2"`) and run `cargo fetch` with the
+   Step 2 environment.
    `cargo fetch` resolves `Cargo.lock` and downloads the `.crate` without
    running build scripts or proc-macros. If resolution requires a higher MSRV,
    revert `Cargo.toml` and `Cargo.lock` and add it to Step 4's MSRV prompt.

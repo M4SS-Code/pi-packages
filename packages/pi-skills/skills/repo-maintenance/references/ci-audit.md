@@ -93,8 +93,9 @@ it wasn't known whether they passed.
 - Pass `--locked` to every Cargo build/test command and `--frozen-lockfile` to
   `pnpm install`.
 - Run `clippy` with `--all-targets` and relevant feature combinations on the
-  pinned Rust toolchain (see "Toolchains"), and run an MSRV job with the
-  `rust-version` toolchain.
+  pinned Rust toolchain (see "Toolchains"). Crates published to crates.io also
+  need an MSRV job with the `rust-version` toolchain; binaries and unpublished
+  crates do not.
 - Run `cargo-deny` when `deny.toml` exists, and verify `[graph] targets` in
   `deny.toml`:
   - Library: omit `targets` so `cargo-deny` checks all targets.
