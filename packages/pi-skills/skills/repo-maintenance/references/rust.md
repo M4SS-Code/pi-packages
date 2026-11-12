@@ -12,6 +12,7 @@ build!: bump MSRV to v1.NN
 style(clippy): fix warnings enabled by the MSRV bump
 refactor: ...                        (code that was waiting on the new MSRV)
 build(deps): upgrade semver compatible Rust dependencies
+build(deps): upgrade <crate> to v<version>   (a security fix younger than a day)
 build(deps): ignore RUSTSEC-YYYY-NNNN
 build(deps): upgrade <crate> to v<major>     (one per upgrade or group)
 build(deps): ...                     (standing holds that became obsolete)
@@ -60,11 +61,12 @@ If `Cargo.lock` is not tracked in git (`git ls-files Cargo.lock` prints
 nothing), copy it to `<scratch>/Cargo.lock.before` before running any `cargo`
 command, or note that it does not exist yet. Step 4 restores it from there.
 
-Record the baseline advisories and duplicate versions (substitute the `<graph>`
-flags from the table above when writing `dups.sh`):
+Record the baseline advisories, licenses and duplicate versions (substitute
+the `<graph>` flags from the table above when writing `dups.sh`):
 
 ```sh
 cargo deny --workspace --all-features check advisories > <scratch>/advisories-before.txt 2>&1   # or: cargo audit
+cargo deny --workspace --all-features check licenses > <scratch>/licenses-before.txt 2>&1      # only if deny.toml exists
 cat > <scratch>/dups.sh <<'EOF'
 cargo tree -q -d --workspace <graph> --all-features --depth 0 --prefix none | sort -u \
   | awk 'NF { v[$1] = v[$1] " " $2; n[$1]++ } END { for (k in n) if (n[k] > 1) print k v[k] }' \
@@ -72,6 +74,11 @@ cargo tree -q -d --workspace <graph> --all-features --depth 0 --prefix none | so
 EOF
 sh <scratch>/dups.sh > <scratch>/dups-before.txt
 ```
+
+If the licenses check already fails, a locked dependency uses a license that
+`deny.toml` does not allow. Stop and ask whether to allow it. If the user
+agrees, add it to `[licenses] allow` as the first commit,
+`build(deps): allow the <license> license`.
 
 (`dups.sh` uses `cargo tree` rather than `Cargo.lock` so unused optional
 dependencies are ignored.)

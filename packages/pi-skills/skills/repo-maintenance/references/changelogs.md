@@ -60,7 +60,8 @@ npm diff --diff=<name>@<old> --diff=<name>@<new> -- package.json <paths...>
 
 When a package ships compiled output, inspect `*.d.ts` for API changes and the
 compiled JS for behavior, falling back to the upstream source repository
-(Section 3) when compiled code is unreadable.
+("Read the changelog and migration guide", source 2) when compiled code is
+unreadable.
 
 ### What to check in the diff
 

@@ -110,7 +110,6 @@ Gather the evidence first, then stop and ask the user when:
 - a newer version is held back by the MSRV;
 - an applicable advisory has no fix, or its fix requires an override, MSRV bump
   or upstream release;
-- an advisory flags an unmaintained crate (replacing it is the user's call);
 - an update introduces an unallowed license, or an install script that must run
   (disabling an unneeded install script does not require approval);
 - a version younger than the one-day release-age gate is needed for anything
@@ -171,6 +170,8 @@ End the run with a report covering:
 
 - commits created since `<base>`: short hash, subject and a one-line summary;
 - decisions waiting on the user, with the gathered evidence;
+- crates flagged as unmaintained, with the alternatives the advisory lists
+  (replacing one is the user's call);
 - items deliberately left unchanged: skipped majors, ignored advisories, active
   release-age exceptions, versions held back by the MSRV, and standing holds
   (`[patch]`, `=` pins, overrides), each with its reason;
