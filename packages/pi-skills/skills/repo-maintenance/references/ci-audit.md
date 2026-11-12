@@ -70,6 +70,38 @@ it wasn't known whether they passed.
 - **Installed tools**: Pin tool versions (`tool: cargo-hack@0.6.39`). Use
   `curl -fsSL` for downloads (without `-f`, HTTP error pages are saved as 0-exit
   files) and verify checksums when published.
+- **Downloaded tools**: Cache every binary or archive a workflow downloads
+  with `curl`, so CI does not fetch it from an external service on every run
+  and keeps working during that service's downtime while the cache is warm:
+  1. Put the version and its SHA256 together in `env:`, with a comment saying
+     where the checksum comes from.
+  2. Restore the file with the cache action (`actions/cache` on GitHub,
+     `Actions/cache` on `code.m4ss.net`), with the version in the `key`.
+  3. Run `curl -fsSL` only when the file is missing, then always check it with
+     `sha256sum -c`, whether it came from the cache or the network.
+
+  When bumping the version, update the SHA256 in the same commit. Example:
+
+  ```yaml
+  env:
+    NIX_INSTALLER_VERSION: 2.35.3
+    # sha256 of nix-installer-x86_64-linux, from the digest GitHub shows
+    # for the release asset.
+    NIX_INSTALLER_SHA256: 59a1841db7d41d5127163cc8acad45a04b0d73e95a022269d4b9e7ae2ad7fab2
+  steps:
+    - name: Cache nix-installer
+      uses: https://code.m4ss.net/Actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: /tmp/nix-installer
+        key: nix-installer-x86_64-linux-${{ env.NIX_INSTALLER_VERSION }}
+    - name: Install Nix
+      run: |
+        if [ ! -f /tmp/nix-installer ]; then
+          curl -fsSL -o /tmp/nix-installer "https://github.com/NixOS/nix-installer/releases/download/${NIX_INSTALLER_VERSION}/nix-installer-x86_64-linux"
+        fi
+        echo "${NIX_INSTALLER_SHA256}  /tmp/nix-installer" | sha256sum -c -
+  ```
+
 - **Containers**: Pin `container:`, `services:` and `docker run` images by
   digest (`image:tag@sha256:...` or `image@sha256:... # tag`).
 - **Rust toolchains**: Pin the Rust version in CI and ensure `clippy` (along
