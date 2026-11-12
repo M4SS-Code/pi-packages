@@ -24,6 +24,12 @@ Run every pnpm command that resolves, installs or fixes (`update`, `add`,
 pnpm --config.minimumReleaseAge=1440 --config.trustPolicy=no-downgrade <command>
 ```
 
+Without these flags, pnpm does not enforce the gate: pnpm 12.14 installed a
+release published the same morning and added it to `minimumReleaseAgeExclude`
+on its own, with no error. `trustPolicy=no-downgrade` makes pnpm fail instead
+of installing a version with weaker publishing trust (for example, no
+provenance) than the version it replaces.
+
 Never write `minimumReleaseAge` or `trustPolicy` into `pnpm-workspace.yaml`.
 
 Do not install any version published less than 24 hours ago (1440 minutes)
