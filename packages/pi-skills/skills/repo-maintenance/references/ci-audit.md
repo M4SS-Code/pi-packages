@@ -191,8 +191,9 @@ it wasn't known whether they passed.
   `.forgejo/workflows/` by hand.
 - **Static analysis tools**:
   - Run `zizmor --pedantic .github/workflows` (set `GH_TOKEN` to enable online
-    checks like `impostor-commit` and `known-vulnerable-actions`; install via
-    `uvx zizmor`, `pipx run zizmor` or `cargo install --locked zizmor`).
+    checks like `impostor-commit` and `known-vulnerable-actions`). Run it
+    without installing via `uvx zizmor` or `pipx run zizmor`, or install it
+    with `cargo install --locked zizmor`.
   - Run `actionlint` on `.github/workflows/`.
   - In pnpm workspaces, `pnpm outdated --include-github-actions` and
     `pnpm update --include-github-actions` list and update `.github/workflows/`
