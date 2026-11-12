@@ -149,8 +149,10 @@ Classify each output line:
   `cargo search <crate> --limit 1` and `cargo info <crate>@<version>`.
 - `Unchanged foo v1.2.3 (available: v1.2.9)` (no `requires Rust`):
   Compatible release blocked by an `=` or `<` pin or a `[patch]`. Locate the
-  pin with `cargo tree -q -i foo@1.2.3 --workspace <graph> --all-features` and
-  handle in Step 9.
+  pin with `cargo tree -q -i foo@1.2.3 --workspace <graph> --all-features`:
+  - In one of our `Cargo.toml` files or a `[patch]`: handle it in Step 9.
+  - In another crate's manifest (e.g. `axum` requiring `matchit = "=0.8.4"`):
+    change nothing, and list the crate, the pin and who sets it in the report.
 - `Updating graviola v0.4.1 -> v0.4.4 (requires Rust 1.89)`:
   No version in range supports the MSRV, so Cargo fell back to an incompatible
   one. The current MSRV is already broken for features enabling this crate;
