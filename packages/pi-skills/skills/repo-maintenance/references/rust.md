@@ -56,6 +56,10 @@ Inspect the repository configuration:
   (`references/ci-audit.md`, "Publishing"). Report any unpublished crate
   missing `publish = false`.
 
+If `Cargo.lock` is not tracked in git (`git ls-files Cargo.lock` prints
+nothing), copy it to `<scratch>/Cargo.lock.before` before running any `cargo`
+command, or note that it does not exist yet. Step 4 restores it from there.
+
 Record the baseline advisories and duplicate versions (substitute the `<graph>`
 flags from the table above when writing `dups.sh`):
 
@@ -220,6 +224,10 @@ others in Step 6.
    ```sh
    git restore Cargo.lock
    ```
+
+   If `Cargo.lock` is not tracked, `git restore` fails. Copy
+   `<scratch>/Cargo.lock.before` (Step 1) back to `Cargo.lock` instead, or
+   delete `Cargo.lock` if it did not exist at the start.
 
 2. Find every reference to the old MSRV in tracked files:
 
