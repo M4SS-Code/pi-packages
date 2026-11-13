@@ -254,7 +254,8 @@ To bump a pinned toolchain:
    them first in a separate `style(clippy): ...` commit.
 3. Update the version string everywhere it appears: `RUST_VERSION`,
    `toolchain:` inputs, job `name` strings (e.g., `clippy / 1.99.1`),
-   `Dockerfile`s and cache keys.
+   Dockerfiles used only by CI, and cache keys. Bump the Rust image in the
+   other Dockerfiles in a separate commit (`references/dockerfiles.md`).
 4. Commit as `chore(ci): upgrade Rust to v1.NN.P` (or `... Rust beta to ...` /
    `... Rust nightly to YYYY-MM-DD`).
 

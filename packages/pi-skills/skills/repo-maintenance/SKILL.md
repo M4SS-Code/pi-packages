@@ -4,8 +4,9 @@ license: MIT
 description: >
   Maintain repository dependencies and CI for Rust (Cargo) and Node.js (pnpm).
   Use when asked to update, upgrade or bump dependencies, handle RustSec or npm
-  security advisories, bump the MSRV, or audit or refresh GitHub Actions and
-  Forgejo Actions workflows.
+  security advisories, bump the MSRV, audit or refresh GitHub Actions and
+  Forgejo Actions workflows, or upgrade the Alpine, Debian, Rust, Node.js and
+  other images in Dockerfiles and Compose files.
 ---
 
 # Repository maintenance
@@ -15,17 +16,20 @@ report what still needs a decision.
 
 ## Pick the procedure
 
-| Task                                                  | Read                       |
-| ----------------------------------------------------- | -------------------------- |
-| Rust dependencies, the MSRV, RustSec advisories       | `references/rust.md`       |
-| Node.js dependencies with pnpm, npm advisories        | `references/node.md`       |
-| Reviewing an upgrade: changelog and release diff      | `references/changelogs.md` |
-| Auditing CI, refreshing pinned actions and toolchains | `references/ci-audit.md`   |
-| Forgejo Actions, and our code.m4ss.net runners        | `references/forgejo.md`    |
+| Task                                                  | Read                        |
+| ----------------------------------------------------- | --------------------------- |
+| Rust dependencies, the MSRV, RustSec advisories       | `references/rust.md`        |
+| Node.js dependencies with pnpm, npm advisories        | `references/node.md`        |
+| Reviewing an upgrade: changelog and release diff      | `references/changelogs.md`  |
+| Auditing CI, refreshing pinned actions and toolchains | `references/ci-audit.md`    |
+| Forgejo Actions, and our code.m4ss.net runners        | `references/forgejo.md`     |
+| Images in Dockerfiles and Compose files               | `references/dockerfiles.md` |
 
 Paths are relative to this skill's directory. Inspect `Cargo.lock`,
-`pnpm-lock.yaml`, `.github/workflows/`, `.forgejo/workflows/` and
-`.gitlab-ci.yml` to see which procedures apply. For a Rust workspace with a
+`pnpm-lock.yaml`, `.github/workflows/`, `.forgejo/workflows/`,
+`.gitlab-ci.yml`, the Dockerfiles and the Compose files to see which
+procedures apply. When you
+bump the Rust toolchain in CI, also bump the Rust images in the Dockerfiles. For a Rust workspace with a
 SvelteKit frontend, run both dependency procedures in sequence (run pnpm from
 the directory containing `pnpm-lock.yaml`). Review every major upgrade with
 `references/changelogs.md`.
@@ -154,6 +158,10 @@ Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
 | Single pinned action                      | `chore(ci): upgrade actions/checkout to v7.0.1`                 |
 | Routine refresh of pinned actions         | `chore(ci): upgrade the pinned actions`                         |
 | Runner image                              | `chore(ci): run on Ubuntu 26.04`                                |
+| Rust image in a Dockerfile                | `build(docker): upgrade Rust to v1.NN`                          |
+| Alpine image, with the Rust in its tag    | `build(docker): upgrade Alpine Linux to v3.NN / Rust to v1.NN`  |
+| Debian image                              | `build(docker): upgrade Debian to Trixie`                       |
+| Node.js or another image                  | `build(docker): upgrade Node.js to v26`                         |
 | Toolchains in `Actions/ci-images`         | `ci: bump Rust to 1.NN.P, Node.js to 24.X.Y and pnpm to 12.X.Y` |
 
 - `<major>` is the compatibility-defining prefix: `v0.23` for `0.23.x`, `v2`
