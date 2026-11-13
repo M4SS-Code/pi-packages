@@ -80,6 +80,11 @@ Two rules apply to our repositories:
   cargo-deny; or pnpm's `check`, `lint`, `test` and `build`), then run the full
   set at the end. List any CI jobs that cannot run locally (external services,
   large feature powersets, coverage uploads) in the report.
+- Do not run `cargo hack --feature-powerset` locally; list it in the report
+  instead. Never interrupt `cargo hack ... --no-dev-deps` or run it in the
+  background: it deletes `[dev-dependencies]` from the manifests while it runs
+  and restores them only when it exits normally. If one was interrupted,
+  restore the manifests with `git checkout -- '*Cargo.toml'`.
 - When a check fails and the reference file specifies a recovery step (such as
   holding back a regressed compatible release or fixing new MSRV lints), follow
   it; otherwise keep the failure visible and stop to ask.
