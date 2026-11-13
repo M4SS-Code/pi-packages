@@ -260,8 +260,11 @@ To bump a pinned toolchain:
    one fails too. Do not rely on issue threads or changelogs alone for this.
 3. Update the version string everywhere it appears: `RUST_VERSION`,
    `toolchain:` inputs, job `name` strings (e.g., `clippy / 1.99.1`),
-   Dockerfiles used only by CI, and cache keys. Bump the Rust image in the
-   other Dockerfiles in a separate commit (`references/dockerfiles.md`).
+   Dockerfiles used only by CI, and cache keys, in both
+   `.github/workflows/` and `.forgejo/workflows/`. Then check that no
+   occurrence is left; this must print nothing:
+   `git grep -n -F '<old version>' -- .github .forgejo`. Bump the Rust image
+   in the other Dockerfiles in a separate commit (`references/dockerfiles.md`).
 4. Commit as `chore(ci): upgrade Rust to v1.NN.P` (or `... Rust beta to ...` /
    `... Rust nightly to YYYY-MM-DD`).
 
