@@ -251,7 +251,13 @@ To bump a pinned toolchain:
 1. Install it locally:
    `rustup toolchain install <new> --profile minimal -c clippy -c rustfmt`.
 2. Run CI's commands with `cargo +<new>`. If new clippy warnings appear, fix
-   them first in a separate `style(clippy): ...` commit.
+   them first in a separate `style(clippy): ...` commit. If a dependency no
+   longer compiles on the new toolchain, keep the old one, then find the first
+   release of that crate that compiles: add only the crate at its newest
+   version to an empty project in `<scratch>` (`cargo new --lib`) and run
+   `cargo +<new> check` there. Report the result as "Rust 1.NN needs <crate>
+   vX", or as "no release of <crate> compiles on 1.NN yet" only if the newest
+   one fails too. Do not rely on issue threads or changelogs alone for this.
 3. Update the version string everywhere it appears: `RUST_VERSION`,
    `toolchain:` inputs, job `name` strings (e.g., `clippy / 1.99.1`),
    Dockerfiles used only by CI, and cache keys. Bump the Rust image in the

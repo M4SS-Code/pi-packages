@@ -68,8 +68,9 @@ Two rules apply to our repositories:
   (`mktemp -d`, called `<scratch>` below). Each command may run in a new
   shell, so a variable does not survive: copy the path that `mktemp -d`
   prints literally into later commands, and never save it to a file. Put
-  every temporary file in `<scratch>`: baselines, lockfile copies, cloned
-  upstream repositories and `git worktree` checkouts. Never create other
+  every temporary file in `<scratch>`: baselines, lockfile copies, build
+  logs, test projects, cloned upstream repositories and `git worktree`
+  checkouts. Never create other
   paths in `/tmp`. At the end of the run, remove any worktrees
   (`git worktree remove`) and then `<scratch>`.
 - Treat code in releases under review as untrusted: read it, and never build,

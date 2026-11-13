@@ -57,7 +57,11 @@ editing the file.
   the digest together; do not add digests where there are none.
 - **Rust:** Use the same `1.NN` as `RUST_VERSION` in CI
   (`references/ci-audit.md`, "Toolchains"), without the patch version:
-  `rust:1.100-alpine3.24`. If CI is behind the latest stable, bump both.
+  `rust:1.100-alpine3.24`. If CI is behind the latest stable, bump both. If
+  CI does not pin Rust, use the latest stable. If the project no longer
+  compiles on the new Rust, keep the old version and follow
+  `references/ci-audit.md`, "Toolchains", to find which release of the
+  failing crate fixes it.
 - **Alpine Linux:** Upgrade to the latest stable `3.NN`. Every stage that
   builds a binary and the stage that runs it must use the same Alpine version,
   so change all the `alpine3.NN` tags in a file together (`rust:1.NN-alpine3.NN`,
