@@ -20,9 +20,9 @@ We built these for our own way of using Pi; we focus on keeping the model's cont
 
 ### Skills
 
-| Package                            | Description                                    |
-| ---------------------------------- | ---------------------------------------------- |
-| [`pi-skills`](packages/pi-skills/) | Open-source Pi skills (`commit`, more to come) |
+| Package                            | Description                                          |
+| ---------------------------------- | ---------------------------------------------------- |
+| [`pi-skills`](packages/pi-skills/) | Open-source Pi skills (`commit`, `repo-maintenance`) |
 
 ## Setup
 

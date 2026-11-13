@@ -1,7 +1,7 @@
 {
   "name": "@m4ss/pi-skills",
   "version": "0.1.0",
-  "description": "Open-source Pi skills: a commit skill for safe, atomic Git commits with deliberate staging, focused verification, and English Conventional Commit messages",
+  "description": "Open-source Pi skills: a commit skill for safe, atomic Git commits with deliberate staging, focused verification, and English Conventional Commit messages, and a repo-maintenance skill for Rust and Node.js dependency upgrades and CI audits",
   "license": "MIT",
   "author": "Paolo Barbolini <paolo.barbolini@m4ss.net>",
   "repository": {
@@ -20,7 +20,8 @@
     "skills",
     "git",
     "commit",
-    "conventional-commits"
+    "conventional-commits",
+    "dependencies"
   ],
   "type": "module",
   "publishConfig": {
