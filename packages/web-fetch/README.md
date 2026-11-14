@@ -11,6 +11,7 @@ caps response size to keep things manageable.
 - Blocks private network addresses by hostname (localhost, RFC 1918, link-local, CGNAT, IPv6 ULA); the initial URL and every redirect hop are re-validated — see [Private networks](#private-networks) for scope and the DNS-rebinding limitation
 - Follows instant meta-refresh redirects (the stub pages static site generators emit)
 - 10s default timeout, overrideable per call; large responses capped at 5MB
+- Long pages come back in parts: each truncated result names the `offset` that returns the next part, so a model without file access (such as the search-delegator searcher) can read to the end
 
 ## Install
 
@@ -25,6 +26,7 @@ web_fetch(url="https://www.postgresql.org/docs/current/", format="markdown")
 web_fetch(url="https://redis.io/docs/latest/", format="html")
 web_fetch(url="https://api.github.com/repos/M4SS-Code/watermelon/contents")
 web_fetch(url="https://example.com/slow", timeoutMs=20000)
+web_fetch(url="https://www.postgresql.org/docs/current/", offset=2001)
 ```
 
 ## Private networks
