@@ -34,6 +34,18 @@ describe("syncSearcherTemplate", () => {
     assert.match(content, /^tools: staan_search, web_fetch, llms_txt$/m);
   });
 
+  it("keeps inherited context out of the searcher prompt", () => {
+    const config = { ...DEFAULT_CONFIG };
+    syncSearcherTemplate(config);
+    const content = readFileSync(
+      searcherPath(config.searcher_subagent_name),
+      "utf8",
+    );
+    assert.match(content, /^inheritProjectContext: false$/m);
+    assert.match(content, /^inheritGlobalContext: false$/m);
+    assert.match(content, /^inheritSkills: false$/m);
+  });
+
   it("asks for the Answer / Evidence / Gaps output contract", () => {
     const config = { ...DEFAULT_CONFIG };
     syncSearcherTemplate(config);

@@ -65,6 +65,12 @@ The `searcher.md` template is regenerated whenever the config changes. If you ed
 `tools: staan_search, web_fetch, llms_txt`). To narrow it further, edit that file,
 but keep whatever extensions provide those tools loaded.
 
+The template also sets `inheritProjectContext`, `inheritGlobalContext`, and
+`inheritSkills` to `false`, so repository instructions, your global `AGENTS.md`,
+and the skills catalog stay out of every searcher turn. Set one to `true` in
+`searcher.md` if your searches need it; `inheritGlobalContext` only takes
+effect when `inheritProjectContext` is also `true`.
+
 ## License
 
 MIT

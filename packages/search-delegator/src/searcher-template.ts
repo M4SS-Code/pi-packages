@@ -65,6 +65,14 @@ function renderTemplate(config: Config): string {
     `name: ${config.searcher_subagent_name}`,
     "description: Web research specialist: searches the web, fetches pages, and explores docs sites; returns compact findings with source URLs",
     `tools: ${grantedTools.join(", ")}`,
+    // Web research needs none of the repository instructions, global
+    // AGENTS.md, or skills catalog, and the searcher pays for every
+    // inherited token on every turn. pi-subagents already defaults these to
+    // off for custom agents; pinning them keeps that true if a default
+    // changes and documents the intent in the generated file.
+    "inheritProjectContext: false",
+    "inheritGlobalContext: false",
+    "inheritSkills: false",
   ];
   if (config.searcher_model.trim()) {
     front.push(`model: ${config.searcher_model.trim()}`);
