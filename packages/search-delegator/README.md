@@ -15,12 +15,14 @@ Delegating web work to the searcher:
 ```
 subagent({
   agent: "searcher",
-  task: "Find the latest GDPR NIS2 and AI Act requirements for companies in Europe; return key obligations, dates, source URLs."
+  task: "Goal: find the latest GDPR, NIS2 and AI Act requirements for companies in Europe. Constraints: official EU sources only. Return: key obligations, dates, source URLs."
 })
 ```
 
-The main model is told to split independent questions into separate searcher
-calls and run them in parallel.
+The searcher sees only the brief, so the main model is told to write it as a
+self-contained brief: the goal, what is already known, constraints, and what
+to return. It is also told to split independent questions into separate
+searcher calls and run them in parallel.
 
 `curl`, `wget`, and other shell commands are **not** blocked.
 
