@@ -198,11 +198,11 @@ podman search --list-tags --limit 10000 docker.io/library/postgres \
 Adapt the `grep -E` pattern to the floating tag. For a Debian-based tag such
 as `postgres:18` use `'^18\.[0-9]+-[a-z]+$'` (codename variants like
 `18.7-trixie`); if the major is unknown, as with `postgres:latest`, use
-`'^[0-9]+\.[0-9]+-[a-z]+$'`. Tags the pattern lets through by mistake are
-harmless, because only a tag with the same digest is printed. Use these two
-patterns only for Debian-based tags: for an Alpine tag keep the
-`-alpine3\.[0-9]+` pattern above, or the loop prints `18.7-alpine`, which is
-still floating.
+`'^[0-9]+\.[0-9]+-[a-z]+$'`. Use these two patterns only for Debian-based
+tags: for an Alpine tag keep the `-alpine3\.[0-9]+` pattern above, or the loop
+prints `18.7-alpine`, which is still floating. Within a Debian tag, other
+codenames the pattern lets through do no harm, because only a tag with the
+same digest is printed.
 
 If it prints a tag, pinning to it changes nothing that runs, so it needs no
 production check. Commit it on its own with `pin` in the subject, not

@@ -270,7 +270,7 @@ To bump a pinned toolchain:
    vX", or as "no release of <crate> compiles on 1.NN yet" only if the newest
    one fails too. Do not rely on issue threads or changelogs alone for this.
 3. Update the version string everywhere it appears: `RUST_VERSION`,
-   `toolchain:` inputs, job `name` strings (e.g., `clippy / 1.99.1`),
+   `toolchain:` inputs, job `name` strings (e.g., `clippy / 1.NN.P`),
    Dockerfiles used only by CI, and cache keys, in both
    `.github/workflows/` and `.forgejo/workflows/`, and `channel` in
    `rust-toolchain.toml` if it pins the same version. Then check that no

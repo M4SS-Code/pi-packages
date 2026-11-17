@@ -134,7 +134,10 @@ edits `fetch`, `check`, `build`, `clippy`, `test` and `tree`. Never write
    ```
 
    If the output has a `Downgrading` line, the committed lockfile held a
-   version younger than a day: report it.
+   version the Step 2 environment rejects: usually one younger than a day,
+   but possibly one above the MSRV or a yanked one. Find out which from the
+   line's suffix (`published ... ago`, `requires Rust 1.NN`) or
+   `cargo info <crate>@<version>`, and report it.
 
    If git dependencies (`git = "..."` or `[patch]`) moved to a newer commit,
    review `git log <old>..<new>` in their repositories like a release diff.
