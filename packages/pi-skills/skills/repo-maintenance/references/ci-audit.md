@@ -264,7 +264,8 @@ To bump a pinned toolchain:
    `.github/workflows/` and `.forgejo/workflows/`. Then check that no
    occurrence is left; this must print nothing:
    `git grep -n -F '<old version>' -- .github .forgejo`. Bump the Rust image
-   in the other Dockerfiles in a separate commit (`references/dockerfiles.md`).
+   in the other Containerfiles in a separate commit
+   (`references/containers.md`).
 4. Commit as `chore(ci): upgrade Rust to v1.NN.P` (or `... Rust beta to ...` /
    `... Rust nightly to YYYY-MM-DD`).
 
