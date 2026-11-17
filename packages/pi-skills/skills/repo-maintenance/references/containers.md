@@ -88,7 +88,9 @@ skopeo inspect --format '{{.Digest}}' docker://docker.io/library/nats:2.15.3-alp
 Official Images, `docker.io/<namespace>/<image>` for other Docker Hub images,
 and the registry's own name elsewhere (`quay.io/podman/stable`,
 `ghcr.io/<org>/<image>`). Rewrite short names such as `FROM alpine:3.23` to
-`FROM docker.io/library/alpine:3.24`. Prefer Docker Official Images and images
+`FROM docker.io/library/alpine:3.24`, unless the repository's README,
+contributing guide or a comment in the file asks for short names; then leave
+them and say so in the report. Prefer Docker Official Images and images
 maintained by the upstream project (`docker.io/natsio/nats-box`,
 `quay.io/skopeo/stable`); if a file uses a third-party image for something an
 official image provides, report it and ask before replacing it.
@@ -125,7 +127,8 @@ that `node` puts `slim` after the codename and `rust` puts it before, and that
   Rust, keep the old version and follow `references/ci-audit.md`
   ("Toolchains") to find which release of the failing crate fixes it.
 - **Node.js:** Use the Node.js major that CI uses (`node-version:`), or the one
-  in `.nvmrc`, `.node-version` or `engines.node` in `package.json`. If none of
+  in `.nvmrc`, `.node-version`, or `engines.node` or `devEngines` in
+  `package.json`. If none of
   them pins it, use the newest LTS major. A new major goes in its own commit,
   and the project's Node.js checks (`check`, `lint`, `test` and `build`, as CI
   runs them) must pass, as well as the image build.
@@ -165,8 +168,10 @@ production check. Commit it on its own with `pin` in the subject, not
 `upgrade`. Then upgrade it, if at all, with the steps below.
 
 1. Find the version that runs in production: search the repository's
-   deployment files (Ansible, NixOS, Terraform, Helm, production Compose and
-   `.env` files) and its documentation. If the repository does not say, stop
+   deployment files (Ansible, NixOS, Terraform, Helm, Kustomize, production
+   Compose and `.env` files), the database and broker containers its CI starts
+   (`services:` in `.github/workflows/` and `.forgejo/workflows/`), and its
+   documentation. If the repository does not say, stop
    and ask which version runs in production.
 2. Upgrade only to that version, or to the newest patch release in the same
    `X.Y` series.
@@ -178,12 +183,22 @@ production check. Commit it on its own with `pin` in the subject, not
 
 ## 4. Verify
 
-Build every Containerfile you changed, from the directory its `COPY` paths are
-relative to (usually the repository root):
+Before each commit, build every Containerfile you changed. These commands run
+from the repository root, which is where `COPY` paths usually start; if a
+Containerfile's `COPY` paths start elsewhere, build that one from there.
 
 ```sh
-podman build -f path/to/Containerfile -t repo-maintenance-check .
-podman image rm -f repo-maintenance-check
+git diff --name-only HEAD \
+  | grep -E '(^|/)(Dockerfile|Containerfile)([.-][^/]*)?$|\.(Dockerfile|Containerfile)$' \
+  | while read -r f; do
+      log="<scratch>/build-$(echo "$f" | tr / _).log"
+      if podman build -f "$f" -t repo-maintenance-check . > "$log" 2>&1 < /dev/null; then
+        echo "$f: built"
+      else
+        echo "$f: FAILED, see $log"
+      fi
+      podman image rm -f repo-maintenance-check > /dev/null 2>&1
+    done
 ```
 
 A failing `apk add` or `apt-get install` means a package was renamed or
@@ -191,14 +206,18 @@ removed in the new release: find its new name and fix it in the same commit.
 If a build needs secrets or services that are not available locally, list it in
 the report instead.
 
-Check every Compose file you changed:
+Check that every Compose file you changed is still valid and that its images
+can be pulled (`pull` skips the services that have `build:`):
 
 ```sh
-podman compose -f path/to/compose.yaml config -q
-podman compose -f path/to/compose.yaml pull
+git diff --name-only HEAD \
+  | grep -E '(^|/)(docker-)?compose([.-][^/]*)?\.ya?ml$' \
+  | while read -r f; do
+      podman compose -f "$f" config -q < /dev/null \
+        && podman compose -f "$f" pull < /dev/null \
+        && echo "$f: valid, images pulled"
+    done
 ```
-
-Write build logs and other output to `<scratch>`.
 
 ## 5. Commit
 
