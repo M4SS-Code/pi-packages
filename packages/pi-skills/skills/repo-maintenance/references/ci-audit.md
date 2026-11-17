@@ -206,8 +206,15 @@ them every couple of months, or immediately for security fixes or breakages:
    `.forgejo/workflows/` (after confirming the `code.m4ss.net` mirror has the
    commit; see `references/forgejo.md`).
 5. If an action was pinned to an unreleased branch commit (`# main`), check
-   whether a tagged release now includes that commit
-   (`git merge-base --is-ancestor <sha> <tag>`) and switch to the release tag.
+   whether a tagged release now includes that commit. The repository you are
+   auditing does not have the action's commits, so clone the action first:
+
+   ```sh
+   git clone -q --bare --filter=blob:none https://github.com/<owner>/<repo> <scratch>/<repo>-action.git
+   git -C <scratch>/<repo>-action.git merge-base --is-ancestor <sha> <tag> && echo "included in <tag>"
+   ```
+
+   If it prints "included", switch the pin to the release tag.
 
 Use the subjects in `SKILL.md`, "Commit subjects", noting any security fixes, runtime changes or workflow adjustments in the body. Put major action
 upgrades requiring workflow edits in their own commit.
@@ -238,9 +245,10 @@ for c in stable beta nightly; do
 done
 ```
 
-- **Stable** (`1.99.1`): Bump to the latest stable release.
-- **Beta** (`beta-YYYY-MM-DD` or `1.NN.0-beta.N`): Bump if it predates the
-  latest stable cycle.
+- **Stable** (`1.NN.P`): Bump to the latest stable release.
+- **Beta** (a workflow may pin it as `beta-YYYY-MM-DD` or `1.NN.0-beta.N`;
+  the channel file above prints the `1.NN.0-beta.N` form): Bump if it
+  predates the latest stable cycle.
 - **Nightly** (`nightly-YYYY-MM-DD`): Bump when it predates the latest stable
   release (~6 weeks) or when needed sooner. Verify the target date includes all
   required components (`clippy`, `rustfmt`, `miri`, etc.) with:
@@ -261,9 +269,10 @@ To bump a pinned toolchain:
 3. Update the version string everywhere it appears: `RUST_VERSION`,
    `toolchain:` inputs, job `name` strings (e.g., `clippy / 1.99.1`),
    Dockerfiles used only by CI, and cache keys, in both
-   `.github/workflows/` and `.forgejo/workflows/`. Then check that no
+   `.github/workflows/` and `.forgejo/workflows/`, and `channel` in
+   `rust-toolchain.toml` if it pins the same version. Then check that no
    occurrence is left; this must print nothing:
-   `git grep -n -F '<old version>' -- .github .forgejo`. Bump the Rust image
+   `git grep -n -F '<old version>' -- .github .forgejo ':(glob)**/rust-toolchain*'`. Bump the Rust image
    in the other Containerfiles in a separate commit
    (`references/containers.md`).
 4. Commit as `chore(ci): upgrade Rust to v1.NN.P` (or `... Rust beta to ...` /

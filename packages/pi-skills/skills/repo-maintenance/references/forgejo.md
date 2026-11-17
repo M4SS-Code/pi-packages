@@ -88,7 +88,7 @@ Example job:
 
 ```yaml
 env:
-  RUST_VERSION: 1.99.1
+  RUST_VERSION: 1.100.0
 
 concurrency:
   group: ${{ forgejo.workflow }}-${{ forgejo.ref }}
@@ -99,7 +99,7 @@ jobs:
     # The job containers on these runners are privileged, so never run them
     # for code from a fork.
     if: forgejo.event_name != 'pull_request' || forgejo.event.pull_request.head.repo.full_name == forgejo.repository
-    name: clippy / 1.99.1
+    name: clippy / 1.100.0
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
@@ -115,7 +115,7 @@ jobs:
           components: clippy
 
       - name: cargo clippy
-        run: cargo clippy --locked --all-features -- -D warnings
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
 ```
 
 ### Runner images (`Actions/ci-images`)

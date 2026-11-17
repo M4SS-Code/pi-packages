@@ -95,10 +95,13 @@ edits `fetch`, `check`, `build`, `clippy`, `test` and `tree`. Never write
    CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day" cargo update --dry-run 2>&1 | grep -E 'Locking|min-publish-age'
    ```
 
+   `cargo --version` reports the toolchain `rust-toolchain.toml` selects, if
+   the repository has one.
+
    - **Cooldown:** The `Locking` line must end with `as of 24 hours ago`. If
-     instead Cargo prints
-     `warning: ignoring registry.global-min-publish-age`, it is older than
-     1.100 and resolves without the cooldown. Run every command listed above
+     instead Cargo prints a warning that it is ignoring
+     `registry.global-min-publish-age`, it is older than 1.100 and resolves
+     without the cooldown. Run every command listed above
      with `cargo +stable` instead (install it with
      `rustup toolchain install stable --profile minimal` if needed) and check
      again.
@@ -209,7 +212,7 @@ others in Step 6.
   graviola 0.4.4 already needs 1.89: the graviola backend doesn't build on 1.85
   criterion 0.7 → 0.8 (dev-dependency), needs 1.86
 
-  1.89 covers all three; the latest stable is 1.99.1. Bump the MSRV to 1.89?
+  1.89 covers all three; the latest stable is 1.100.0. Bump the MSRV to 1.89?
   ```
 
 - **If the user declines (or in a non-interactive run):** Proceed to Step 5
@@ -241,6 +244,8 @@ others in Step 6.
      flags like `rustup default 1.NN` or `toolchain: 1.NN.0`, job names like
      `msrv / 1.NN.0`, matrix entries, and cache keys);
    - `msrv` in `clippy.toml` (if present);
+   - `channel` in `rust-toolchain.toml`, if it pins the MSRV rather than a
+     newer toolchain;
    - documentation and README badges, e.g.
      `[![Rustc Version 1.NN+](https://img.shields.io/badge/rustc-1.NN+-lightgray.svg)](https://blog.rust-lang.org/YYYY/MM/DD/Rust-1.NN.0/)`
      (get the release date from `rust-lang/rust`'s `RELEASES.md` and verify the
@@ -368,9 +373,12 @@ For other advisory types:
   advisory. Ignore in `deny.toml` only if the user asks.
 - **`yanked`**: Run `cargo update -p <crate>` with the Step 2 environment.
   Report if no compatible unyanked version exists.
-- **`malicious`**: Stop immediately without compiling anything that builds the
-  crate (build scripts and proc-macros execute during `cargo check`/`build`)
-  and report to the user.
+- **`notice`**: Report it. Ignore in `deny.toml` only if the user asks.
+- **Malicious crates** (a vulnerability advisory with
+  `categories = ["malicious"]`, usually titled "... was removed from
+  crates.io for malicious code"): Stop immediately without compiling anything
+  that builds the crate (build scripts and proc-macros execute during
+  `cargo check`/`build`) and report to the user.
 
 ## 7. Major upgrades
 
@@ -395,10 +403,14 @@ For each upgrade (or coupled group):
 1. Update the version requirement in `Cargo.toml` (preserving the existing
    specifier style, e.g. `"0.23"` or `"2"`) and run `cargo fetch` (not
    `check` or `build`, which run build scripts) with the Step 2 environment.
-   If resolution requires a higher MSRV,
-   revert `Cargo.toml` and `Cargo.lock` and add it to Step 4's MSRV prompt.
+   If resolution requires a higher MSRV, revert `Cargo.toml` and
+   `Cargo.lock`. If Step 4 has not asked the user yet, add it to Step 4's MSRV
+   question. If it has, stop and ask with the same evidence Step 4 collects;
+   if the user approves, commit `build!: bump MSRV to v1.NN` (and Step 4's
+   lint fixes) on top of the current branch, then retry this upgrade.
 2. Audit the release diff and changelog (`references/changelogs.md`).
-3. Run `cargo check --workspace --all-targets --all-features` and adapt code to
+3. Run `cargo check --workspace --all-targets --all-features`, with the Step 2
+   environment, and adapt code to
    breaking changes. If our code relies on an API added after `.0`, set that
    minor/patch version as the minimum requirement in `Cargo.toml`. If the
    migration is large, revert, skip the upgrade, and report an estimate of the
@@ -438,10 +450,9 @@ back the old version, check the upstream status of each offender:
 
    ```sh
    git clone -q --filter=blob:none --no-checkout <repository> <scratch>/<offender>-repo
-   cd <scratch>/<offender>-repo
-   git grep -l -E '^name = "<offender>"' origin/HEAD -- '*Cargo.toml'
-   git show origin/HEAD:<manifest-path>
-   git log --oneline <published-sha>..origin/HEAD
+   git -C <scratch>/<offender>-repo grep -l -E '^name = "<offender>"' origin/HEAD -- '*Cargo.toml'
+   git -C <scratch>/<offender>-repo show origin/HEAD:<manifest-path>
+   git -C <scratch>/<offender>-repo log --oneline <published-sha>..origin/HEAD
    ```
 
    (If the manifest uses `<crate>.workspace = true`, check the root

@@ -39,7 +39,12 @@ For each image, note:
 - **Where its version lives:** in the `FROM` or `image:` line, in an `ARG`
   default (`ARG RUST_VERSION=1.96` with `FROM ...:${RUST_VERSION}-alpine3.23`),
   or in a Compose variable (`${NATS_TAG:-2.12-alpine}`, or a `.env` file).
-  Change the version where it is defined.
+  If an `ARG` has no default, its value comes from a `--build-arg` in a CI
+  workflow or from `args:` under a Compose service's `build:`. Change the
+  version where it is defined.
+- **Its registry:** for a private registry (such as `code.m4ss.net`),
+  `podman search` and `skopeo inspect` need a login. If you have none, list
+  the image in the report instead of guessing its tags.
 - **Its role**, from the table in section 3.
 - **In a multi-stage Containerfile:** which stages build a binary and which
   stage runs it.
@@ -88,7 +93,8 @@ skopeo inspect --format '{{.Digest}}' docker://docker.io/library/nats:2.15.3-alp
 Official Images, `docker.io/<namespace>/<image>` for other Docker Hub images,
 and the registry's own name elsewhere (`quay.io/podman/stable`,
 `ghcr.io/<org>/<image>`). Rewrite short names such as `FROM alpine:3.23` to
-`FROM docker.io/library/alpine:3.24`, unless the repository's README,
+`FROM docker.io/library/alpine:3.23`, keeping the version (the upgrade is a
+separate commit), unless the repository's README,
 contributing guide or a comment in the file asks for short names; then leave
 them and say so in the report. Prefer Docker Official Images and images
 maintained by the upstream project (`docker.io/natsio/nats-box`,
@@ -155,17 +161,29 @@ collation of the distro's C library and ICU, and a different glibc, musl or
 ICU version can make index scans miss rows or accept duplicate keys.
 
 If the image uses a floating tag (`postgres:18-alpine`), first pin it to the
-exact tag it points to today. Find the newest tag in the same series and check
-that both have the same digest:
+exact tag it points to today: the tag with the same digest. Compare the
+floating tag's digest with the tags of its series, newest first, and stop at
+the first match:
 
 ```sh
-skopeo inspect --format '{{.Digest}}' docker://docker.io/library/postgres:18-alpine
-skopeo inspect --format '{{.Digest}}' docker://docker.io/library/postgres:18.7-alpine3.24
+want=$(skopeo inspect --format '{{.Digest}}' docker://docker.io/library/postgres:18-alpine)
+podman search --list-tags --limit 10000 docker.io/library/postgres \
+  | awk 'NR > 1 {print $2}' \
+  | grep -E '^18\.[0-9]+-alpine3\.[0-9]+$' \
+  | sort -rV \
+  | while read -r t; do
+      if [ "$(skopeo inspect --format '{{.Digest}}' "docker://docker.io/library/postgres:$t")" = "$want" ]; then
+        echo "$t"
+        break
+      fi
+    done
 ```
 
-When the two digests match, pinning changes nothing that runs, so it needs no
+If it prints a tag, pinning to it changes nothing that runs, so it needs no
 production check. Commit it on its own with `pin` in the subject, not
-`upgrade`. Then upgrade it, if at all, with the steps below.
+`upgrade`. If it prints nothing, no tag matches: stop and ask, and do not pin
+to the newest tag, because that would change the version that runs. Upgrade a
+pinned image, if at all, with the steps below.
 
 1. Find the version that runs in production: search the repository's
    deployment files (Ansible, NixOS, Terraform, Helm, Kustomize, production
@@ -173,8 +191,11 @@ production check. Commit it on its own with `pin` in the subject, not
    (`services:` in `.github/workflows/` and `.forgejo/workflows/`), and its
    documentation. If the repository does not say, stop
    and ask which version runs in production.
-2. Upgrade only to that version, or to the newest patch release in the same
-   `X.Y` series.
+2. Upgrade only to that version, or to the newest patch release of the same
+   series. The series depends on the tag shape: for `X.Y.Z` images such as
+   `nats`, the series is `X.Y` and patches change `Z` (`2.15.1` to `2.15.3`);
+   for `X.Y` images such as `postgres`, the series is `X` and patches change
+   `Y` (`17.11` to `17.12`).
 3. Keep the distro exactly as it is (`17.12-bookworm` stays on `bookworm`,
    `17.12-alpine3.21` stays on `alpine3.21`), even when the rest of the
    repository moves to a newer Debian or Alpine. Changing it, or switching

@@ -25,7 +25,10 @@ pnpm --config.minimumReleaseAge=1440 --config.trustPolicy=no-downgrade <command>
 ```
 
 Without these flags, pnpm silently installs releases younger than a day and
-adds them to `minimumReleaseAgeExclude`. `trustPolicy=no-downgrade` makes pnpm fail instead
+adds them to `minimumReleaseAgeExclude`: its default one-day gate is not
+strict. Setting `minimumReleaseAge` explicitly, as these flags do, makes it
+strict, so pnpm fails with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` instead.
+`trustPolicy=no-downgrade` makes pnpm fail instead
 of installing a version with weaker publishing trust (for example, no
 provenance) than the version it replaces.
 
@@ -37,9 +40,12 @@ audit (Step 5):
 
 - Resolution (`update`, `update --latest`, `outdated`) picks the newest version
   at least a day old.
-- Every install (including `--frozen-lockfile` in CI) re-checks the lockfile
-  and fails with `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` if any locked version
-  is younger than a day and not listed in `minimumReleaseAgeExclude`.
+- Every install run with these flags, including `--frozen-lockfile`, re-checks
+  the lockfile and fails with `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` if any
+  locked version is younger than a day and not listed in
+  `minimumReleaseAgeExclude`. An install without them, such as a plain
+  `pnpm install --frozen-lockfile` in CI, does not check and installs the
+  locked version, so CI is not a safety net for the gate.
 - If a command fails with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` outside Step 5:
   - Direct dependency: select the newest version at least a day old.
   - Transitive dependency: hold back the parent package (`update -r '!<parent>'`).
@@ -108,10 +114,17 @@ Then handle these cases:
   `.forgejo/workflows/` twins.
 - **If exact pins exist** (no range prefix): Check whether a comment or the
   commit that added the pin gives a reason (a standing hold for Step 9). If
-  not, update it within its current major (`pnpm ... update -r --latest <name>`
-  and verify the major did not change).
-- **Update pnpm in `packageManager`**: Bump to the newest release of the same
-  major that is at least a day old (`npm view pnpm time --json`). If the pin
+  not, update it within its current major: run
+  `pnpm ... update -r --latest <name>` and check the new major in
+  `package.json`. If the major changed, put the previous version back with
+  `pnpm ... update -r <name>@<previous-version>` and handle the new major in
+  Step 6 instead.
+- **Update pnpm in `packageManager`**: `pnpm update -r` can already have
+  changed the pnpm version in `packageManager` (or
+  `devEngines.packageManager`). Check `git diff -- package.json`: if the pnpm
+  major changed, put the previous pin back and handle the new major in Step 6.
+  Otherwise make sure the pin is the newest release of the same major that is
+  at least a day old (`npm view pnpm time --json`). If the pin
   includes a `+sha512...` hash, regenerate it via pnpm rather than editing the
   hash manually. Treat a new pnpm major as a major upgrade (Step 6).
 - **If a minor TypeScript update introduces type errors**: Include small fixes

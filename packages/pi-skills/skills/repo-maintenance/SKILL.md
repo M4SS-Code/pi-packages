@@ -78,8 +78,9 @@ Two rules apply to our repositories:
   test, install or execute anything from it before review.
 - Use `curl` against `https://api.github.com/...` or
   `raw.githubusercontent.com` for read-only GitHub queries instead of `gh`.
-  Pass `-H "Authorization: Bearer ${GITHUB_TOKEN:-$GH_TOKEN}"` when either
-  token is set.
+  Pass `-H "Authorization: Bearer ${GITHUB_TOKEN:-$GH_TOKEN}"` only when
+  either token is set; with neither set, leave the header out entirely,
+  because an empty `Bearer` makes GitHub answer 401 even for public data.
 - Run the exact check commands from the repository's CI with `--locked` or
   `--frozen-lockfile`. For each commit, run the checks covering what changed
   (build, clippy and tests across CI's feature combinations, the MSRV job,
@@ -174,7 +175,8 @@ Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
   in the body when the project publishes a library to crates.io or npm and the
   upgraded dependency is part of its public API (re-exported, or used in public
   types/traits). Unpublished crates (`publish = false`, `"private": true`) and
-  binaries do not take `!`.
+  binaries do not take `!`. For dependency upgrades, this rule decides what
+  counts as breaking, over the `commit` skill's general `!` rule.
 - Check `git log -- .github .forgejo` for whether the repository uses `ci:` or
   `chore(ci):`.
 - Write prose commit bodies wrapped at 72 columns that explain _why_ and _what
