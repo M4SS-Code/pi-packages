@@ -194,8 +194,9 @@ Classify each output line:
   No version in range supports the MSRV, so Cargo fell back to an incompatible
   one. First check that the crate is in the graph CI builds:
   `cargo tree -q -i graviola@0.4.4 --workspace <graph> --all-features`.
-  - If it prints nothing, the crate is only used on other targets: ignore
-    it.
+  - If it prints nothing, the crate is not in the graph CI checks (it is
+    only used on other targets, or only as a dev-dependency when
+    `exclude-dev` is set): ignore it.
   - If `<graph>` is `--target all` (no `targets` in `deny.toml`), run it once
     more without `--target all`, which checks the host target only. If only
     the `--target all` run prints a tree, list the crate in the report as

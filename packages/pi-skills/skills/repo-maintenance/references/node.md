@@ -133,8 +133,8 @@ Then handle these cases:
   pnpm does not check the hash, so a wrong one goes unnoticed: always use this
   command rather than editing the hash. Then run `pnpm --version` in the
   repository (it must print `<version>`) and
-  `pnpm --config.minimumReleaseAge=1440 --config.trustPolicy=no-downgrade install`,
-  which records the new pin in `pnpm-lock.yaml`; include that change in this
+  `pnpm --config.minimumReleaseAge=1440 --config.trustPolicy=no-downgrade install`.
+  Afterwards `pnpm-lock.yaml` records the new pin; include that change in this
   commit. Treat a new pnpm major as a major upgrade (Step 6).
 - **If a minor TypeScript update introduces type errors**: Include small fixes
   in this commit; if the fixes are non-trivial, hold TypeScript back
