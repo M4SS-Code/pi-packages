@@ -17,20 +17,27 @@ below, however recent it is.
 ## 1. Find the files, their images and their versions
 
 ```sh
-# Containerfiles: every FROM, and every ARG (an ARG above FROM can hold the tag)
+# Containerfiles: every FROM, every ARG (an ARG above FROM can hold the tag),
+# and images used by COPY --from= or RUN --mount=...,from=
 git ls-files | grep -E '(^|/)(Dockerfile|Containerfile)([.-][^/]*)?$|\.(Dockerfile|Containerfile)$' \
-  | while read -r f; do grep -n -H -E '^\s*(ARG|FROM)\b' "$f"; done
+  | while read -r f; do grep -n -H -E '^\s*(ARG|FROM)\b|--from=[^ ]*[/:]|from=[^ ,]*[/:]' "$f"; done
 # Compose files: every image line
 git ls-files | grep -E '(^|/)(docker-)?compose([.-][^/]*)?\.ya?ml$' \
   | while read -r f; do grep -n -H -E '^\s*image:' "$f"; done
 # Variables inside image lines, such as ${NATS_TAG:-2.12-alpine}
 git ls-files | grep -E '(^|/)(docker-)?compose([.-][^/]*)?\.ya?ml$' \
   | while read -r f; do grep -n -H -E '^\s*image:.*\$\{' "$f"; done
+# CI workflows: job containers and service containers
+git grep -n -E '^\s*(image|container):' -- .github .forgejo
 ```
 
-If the last search prints anything, look the variable up in the repository's
-`.env` files (`git grep -n '^NATS_TAG=' -- '*.env*'`, with the variable's
-name).
+If the third search (variables inside image lines) prints anything, look the
+variable up in the repository's `.env` files
+(`git grep -n '^NATS_TAG=' -- '*.env*'`, with the variable's name).
+
+Workflow images follow the same tag rules as the rest of this file, and are
+also pinned by digest (`references/ci-audit.md`, "Pinning"). Containerfiles
+and Compose files get a digest only if they already have one.
 
 For each image, note:
 
@@ -101,11 +108,15 @@ maintained by the upstream project (`docker.io/natsio/nats-box`,
 `quay.io/skopeo/stable`); if a file uses a third-party image for something an
 official image provides, report it and ask before replacing it.
 
-**Never use a floating tag** (`latest`, `lts`, `stable`, `mainline`, `edge`,
-`alpine`, `slim`, or a tag with no version, like `rust:slim-trixie`). Pin both
-the software version and the distro version wherever the image publishes
-distro variants. If a reference pins a digest, update the tag and the digest
-together; do not add digests where there are none.
+**Never use a floating tag.** A tag is floating when it lacks any part of its
+shape in the table below: `latest`, `lts`, `stable`, `mainline`, `edge`,
+`alpine`, `slim`, `rust:slim-trixie` (no version), `postgres:18-alpine3.24`
+(no minor) and `nginx:1.30-alpine3.24` (no patch) are all floating;
+`rust:1.100-slim-trixie` and `alpine:3.24` are complete. Pin both the software
+version and the distro version wherever the image publishes distro variants.
+If a reference pins a digest, update the tag and the digest together; do not
+add digests where there are none (workflow images are the exception, see
+section 1).
 
 Each official image names its tags differently. Use exactly these shapes:
 
@@ -152,6 +163,11 @@ Upgrade to the newest release in the same major, pinned to the newest distro
 version published for it (`nginx:1.30.6-alpine3.24`). Stop and ask before
 changing the major version.
 
+For nginx, an even second number (`1.30`) is the stable branch and an odd one
+(`1.31`) is mainline. Stay on the branch the file uses: upgrade `1.30.x` only
+to a newer `1.30.x` (`grep -E '^1\.30\.[0-9]+-alpine3\.[0-9]+$'`), or to the
+next even branch once it exists. Never move from an even branch to an odd one.
+
 ### Databases and brokers (postgres, nats, redis, valkey, mariadb, ...)
 
 These images either deploy the service or stand in for the production one in
@@ -178,6 +194,15 @@ podman search --list-tags --limit 10000 docker.io/library/postgres \
       fi
     done
 ```
+
+Adapt the `grep -E` pattern to the floating tag. For a Debian-based tag such
+as `postgres:18` use `'^18\.[0-9]+-[a-z]+$'` (codename variants like
+`18.7-trixie`); if the major is unknown, as with `postgres:latest`, use
+`'^[0-9]+\.[0-9]+-[a-z]+$'`. Tags the pattern lets through by mistake are
+harmless, because only a tag with the same digest is printed. Use these two
+patterns only for Debian-based tags: for an Alpine tag keep the
+`-alpine3\.[0-9]+` pattern above, or the loop prints `18.7-alpine`, which is
+still floating.
 
 If it prints a tag, pinning to it changes nothing that runs, so it needs no
 production check. Commit it on its own with `pin` in the subject, not

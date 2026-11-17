@@ -42,7 +42,8 @@ months (`git log -1 --format=%cs -- .github .forgejo .gitlab-ci.yml`).
 
 A repository is **ours** when all of the following hold:
 
-1. Its `git remote -v` URL is on `code.m4ss.net` or under `github.com/M4SS-Code`.
+1. Any remote in `git remote -v` is on `code.m4ss.net` or under
+   `github.com/M4SS-Code` (SSH form `git@github.com:M4SS-Code/...`).
 2. It is **not** a mirror or fork of an external project (exclude `Mirror/<repo>`
    on `code.m4ss.net` whose `original_url` is outside `M4SS-Code`, forks under
    `M4SS-Code`, and action mirrors under `Actions/` except `Actions/ci-images`).
@@ -147,7 +148,8 @@ Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
 
 | Change                                    | Subject                                                         |
 | ----------------------------------------- | --------------------------------------------------------------- |
-| MSRV bump (breaking change)               | `build!: bump MSRV to v1.NN`                                    |
+| MSRV bump, crate published to crates.io   | `build!: bump MSRV to v1.NN`                                    |
+| MSRV bump, binary or unpublished crate    | `build: bump MSRV to v1.NN`                                     |
 | Lints enabled by the MSRV bump            | `style(clippy): fix warnings enabled by the MSRV bump`          |
 | Rust dependencies within declared ranges  | `build(deps): upgrade semver compatible Rust dependencies`      |
 | Node dependencies within declared ranges  | `build(deps): upgrade semver compatible Node dependencies`      |
@@ -175,8 +177,9 @@ Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
   in the body when the project publishes a library to crates.io or npm and the
   upgraded dependency is part of its public API (re-exported, or used in public
   types/traits). Unpublished crates (`publish = false`, `"private": true`) and
-  binaries do not take `!`. For dependency upgrades, this rule decides what
-  counts as breaking, over the `commit` skill's general `!` rule.
+  binaries do not take `!`, for major upgrades or MSRV bumps. For dependency
+  upgrades and MSRV bumps, this rule decides what counts as breaking, over the
+  `commit` skill's general `!` rule.
 - Check `git log -- .github .forgejo` for whether the repository uses `ci:` or
   `chore(ci):`.
 - Write prose commit bodies wrapped at 72 columns that explain _why_ and _what

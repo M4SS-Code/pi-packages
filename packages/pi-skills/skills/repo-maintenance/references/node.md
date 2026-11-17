@@ -59,7 +59,7 @@ audit (Step 5):
     - some-package@1.2.3
   ```
 
-- `pnpm audit --fix` automatically appends patched versions to
+- `pnpm audit --fix` can append patched versions younger than a day to
   `minimumReleaseAgeExclude`: always inspect `git diff -- pnpm-workspace.yaml`
   after running it and keep only entries that satisfy Step 5.
 - Check a version's publish timestamp with:
@@ -124,9 +124,18 @@ Then handle these cases:
   `devEngines.packageManager`). Check `git diff -- package.json`: if the pnpm
   major changed, put the previous pin back and handle the new major in Step 6.
   Otherwise make sure the pin is the newest release of the same major that is
-  at least a day old (`npm view pnpm time --json`). If the pin
-  includes a `+sha512...` hash, regenerate it via pnpm rather than editing the
-  hash manually. Treat a new pnpm major as a major upgrade (Step 6).
+  at least a day old (`npm view pnpm time --json`). To change the pin, edit
+  the version in `packageManager` by hand. Never run `pnpm self-update`: it
+  runs as the installed pnpm, and on pnpm 12 it also replaces the installed
+  pnpm. If the pin has a `+sha512...` hash, replace the whole value with the
+  output of:
+  `echo "pnpm@<version>+sha512.$(npm view pnpm@<version> dist.integrity | sed 's/^sha512-//' | base64 -d | od -An -tx1 -v | tr -d ' \n')"`.
+  pnpm does not check the hash, so a wrong one goes unnoticed: always use this
+  command rather than editing the hash. Then run `pnpm --version` in the
+  repository (it must print `<version>`) and
+  `pnpm --config.minimumReleaseAge=1440 --config.trustPolicy=no-downgrade install`,
+  which records the new pin in `pnpm-lock.yaml`; include that change in this
+  commit. Treat a new pnpm major as a major upgrade (Step 6).
 - **If a minor TypeScript update introduces type errors**: Include small fixes
   in this commit; if the fixes are non-trivial, hold TypeScript back
   (`update -r '!typescript'`) and move it to its own commit.
@@ -151,7 +160,8 @@ remaining advisory:
 
 1. **Check for a fix:** Check `patched_versions` in `pnpm audit --json` (`null`
    means no fix). Prefer `pnpm ... audit --fix=update`, which updates
-   `pnpm-lock.yaml` without adding overrides, and include the change in Step 4.
+   `pnpm-lock.yaml` and raises the range in `package.json`, without adding
+   overrides, and include the change in Step 4.
    Plain `audit --fix` writes `overrides` to `pnpm-workspace.yaml`: ask the
    user before adding an override. If the fix is younger than a day, follow
    Step 5.
@@ -206,7 +216,13 @@ advisory (from Step 3):
 2. Add the exact version (plus any equally young companion platform packages
    listed in the pnpm error) to `minimumReleaseAgeExclude` with a comment naming
    the advisory.
-3. Upgrade the package (or its parent dependency) and run the checks.
+3. Upgrade it with
+   `pnpm --config.minimumReleaseAge=1440 --config.trustPolicy=no-downgrade update -r <name>`.
+   Give no version: with `<name>@<version>`, pnpm skips the package when it is
+   only a transitive dependency. Confirm the excluded version is now locked
+   (`grep -E "^  '?<name>@" pnpm-lock.yaml`; scoped names are quoted). If
+   the fix needs a newer range in a parent dependency, upgrade the parent the
+   same way. Then run the checks.
 4. Commit as `build(deps): upgrade <name> to v<version>`, stating the fixed
    advisory, that the release is under the 1-day gate, and that its diff was
    audited.

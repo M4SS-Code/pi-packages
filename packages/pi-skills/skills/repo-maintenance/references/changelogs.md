@@ -41,9 +41,12 @@ cached `.crate`'s `sha256sum` matches the `checksum` recorded in `Cargo.lock`
 (or `git show <commit>:Cargo.lock`). Then diff the extracted directories:
 
 ```sh
+R="${CARGO_HOME:-$HOME/.cargo}/registry"
 git diff --no-index --stat $R/src/index.crates.io-*/<crate>-<old> $R/src/index.crates.io-*/<crate>-<new>
 git diff --no-index $R/src/index.crates.io-*/<crate>-<old> $R/src/index.crates.io-*/<crate>-<new>
 ```
+
+Run each block above as one shell call: `$R` does not survive into the next.
 
 Inspect all files in the diff, not only `src/`: check `build.rs`, proc-macro
 code, and the normalized `Cargo.toml` (which carries the resolved dependency
@@ -88,14 +91,18 @@ Read every release entry after the currently locked version up to and including
 the target version. Check sources in this order and stop at the first source
 that covers the target version:
 
+First save a filename filter matching standard changelog names, including
+versioned ones such as `CHANGELOG-0.9.md` or `changes_v2.x.rst`, to a file in
+`<scratch>` (a shell variable would not survive into the next command):
+
 ```sh
-# Filename filter matching standard changelog names, including versioned
-# ones such as CHANGELOG-0.9.md or changes_v2.x.rst
-FILTER='(^|/)((changelog|changes|history|news|releases|release[-_]?notes)([-_]v?[0-9][0-9.x]*)?(\.(md|rst|txt|adoc))?$|changelog/)'
+cat > <scratch>/changelog-filter.txt <<'EOF'
+(^|/)((changelog|changes|history|news|releases|release[-_]?notes)([-_]v?[0-9][0-9.x]*)?(\.(md|rst|txt|adoc))?$|changelog/)
+EOF
 ```
 
 1. **Published package files**:
-   `(cd <extracted-dir> && find . -type f | grep -i -E "$FILTER")`
+   `(cd <extracted-dir> && find . -type f | grep -i -E -f <scratch>/changelog-filter.txt)`
 2. **Upstream git repository at the published commit**: Get the repository URL
    (`cargo info <crate>@<version>` or `npm view <name>@<version> repository.url`)
    and commit SHA (`git.sha1` in `.cargo_vcs_info.json`, or
@@ -103,7 +110,7 @@ FILTER='(^|/)((changelog|changes|history|news|releases|release[-_]?notes)([-_]v?
 
    ```sh
    git clone -q --filter=blob:none --no-checkout <repository> <scratch>/<name>-repo
-   git -C <scratch>/<name>-repo ls-tree -r --name-only <sha> | grep -i -E "$FILTER"
+   git -C <scratch>/<name>-repo ls-tree -r --name-only <sha> | grep -i -E -f <scratch>/changelog-filter.txt
    git -C <scratch>/<name>-repo show <sha>:<path>
    ```
 

@@ -100,7 +100,9 @@ it wasn't known whether they passed.
   ```
 
 - **Containers**: Pin `container:`, `services:` and `docker run` images by
-  digest (`image:tag@sha256:...` or `image@sha256:... # tag`).
+  digest (`image:tag@sha256:...` or `image@sha256:... # tag`). Choose and
+  upgrade their tags with `references/containers.md`; only workflow images
+  get a digest added where there is none.
 - **Rust toolchains**: Pin the Rust version (see "Toolchains").
 
 ### Runners
