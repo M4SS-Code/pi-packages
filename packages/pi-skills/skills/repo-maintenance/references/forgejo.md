@@ -145,9 +145,10 @@ When updating pinned toolchains in `Actions/ci-images`:
    Rust only needs `RUST_VERSION`.
 2. Keep `ubuntu-24.04.Dockerfile` and `ubuntu-26.04.Dockerfile` identical
    except for the `FROM` base image.
-3. Enforce the 1-day release-age gate on non-security releases. Patch/minor
-   updates and new Rust stable releases are routine; ask before bumping Node.js
-   or Go to a new major.
+3. Enforce the 1-day release-age gate on non-security releases of Node.js,
+   Go and pnpm. Rust has no release-age gate: take the latest stable release,
+   however recent. Patch/minor updates and new Rust stable releases are
+   routine; ask before bumping Node.js or Go to a new major.
 4. Check whether `quay.io/podman/stable:<tag>` in the build workflow has a
    newer digest and update the pinned digest if so:
 

@@ -247,7 +247,8 @@ for c in stable beta nightly; do
 done
 ```
 
-- **Stable** (`1.NN.P`): Bump to the latest stable release.
+- **Stable** (`1.NN.P`): Bump to the latest stable release, however recent:
+  Rust releases have no release-age gate.
 - **Beta** (a workflow may pin it as `beta-YYYY-MM-DD` or `1.NN.0-beta.N`;
   the channel file above prints the `1.NN.0-beta.N` form): Bump if it
   predates the latest stable cycle.
