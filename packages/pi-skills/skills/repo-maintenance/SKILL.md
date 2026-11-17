@@ -161,6 +161,7 @@ Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
 | Routine refresh of pinned actions         | `chore(ci): upgrade the pinned actions`                         |
 | Runner image                              | `chore(ci): run on Ubuntu 26.04`                                |
 | Full image names in a Containerfile       | `build(docker): use fully qualified image names`                |
+| Floating image tag pinned, same digest    | `build(docker): pin Postgres to v18.7`                          |
 | Rust image in a Containerfile             | `build(docker): upgrade Rust to v1.NN`                          |
 | Alpine image, with the Rust in its tag    | `build(docker): upgrade Alpine Linux to v3.NN / Rust to v1.NN`  |
 | Debian image                              | `build(docker): upgrade Debian to Trixie`                       |

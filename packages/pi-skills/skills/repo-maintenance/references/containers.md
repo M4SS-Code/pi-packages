@@ -151,6 +151,19 @@ their distro can corrupt existing data: PostgreSQL text indexes depend on the
 collation of the distro's C library and ICU, and a different glibc, musl or
 ICU version can make index scans miss rows or accept duplicate keys.
 
+If the image uses a floating tag (`postgres:18-alpine`), first pin it to the
+exact tag it points to today. Find the newest tag in the same series and check
+that both have the same digest:
+
+```sh
+skopeo inspect --format '{{.Digest}}' docker://docker.io/library/postgres:18-alpine
+skopeo inspect --format '{{.Digest}}' docker://docker.io/library/postgres:18.7-alpine3.24
+```
+
+When the two digests match, pinning changes nothing that runs, so it needs no
+production check. Commit it on its own with `pin` in the subject, not
+`upgrade`. Then upgrade it, if at all, with the steps below.
+
 1. Find the version that runs in production: search the repository's
    deployment files (Ansible, NixOS, Terraform, Helm, production Compose and
    `.env` files) and its documentation. If the repository does not say, stop
@@ -200,6 +213,7 @@ build(docker): upgrade Alpine Linux to v3.24 / Rust to v1.100
 build(docker): upgrade Debian to Trixie
 build(docker): upgrade Node.js to v26
 build(docker): upgrade nginx to v1.30.6
+build(docker): pin Postgres to v18.7
 ```
 
 Put the switch to full image names in its own commit
