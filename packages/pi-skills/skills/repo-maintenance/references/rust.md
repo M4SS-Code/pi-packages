@@ -91,7 +91,8 @@ agrees, add it to `[licenses] allow` as the first commit,
 Do **not** stage or commit `Cargo.lock` until Step 5.
 
 **Release cooldown:** Never lock a version published less than a day ago,
-unless it fixes an applicable security advisory (Step 6). Cargo enforces this
+unless it is a security fix (`SKILL.md`, "Security fixes and the release-age
+gate"; Step 6), with or without an advisory. Cargo enforces this
 with `CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day"`. Prefix **every** `cargo`
 command that can change `Cargo.lock` with it: `update`, and after manifest
 edits `fetch`, `check`, `build`, `clippy`, `test` and `tree`. Never write
@@ -157,8 +158,10 @@ components match: `1.2 -> 1.9` and `0.3.1 -> 0.3.9` are compatible;
 Classify each output line:
 
 - `Unchanged zstd-sys v2.1.2 (available: v2.1.3, published 40 minutes ago)`:
-  Compatible release held back by the release cooldown. Leave it, and list it
-  in the report. If it fixes an applicable advisory, handle it in Step 6.
+  Compatible release held back by the release cooldown. Read its changelog or
+  release notes. If it fixes an applicable advisory, or the changelog mentions
+  a security fix (even with no advisory yet), handle it in Step 6. Otherwise
+  leave it, and list it in the report.
 - `Unchanged ctutils v0.4.2 (available: v0.4.8, requires Rust 1.87)`, where
   `available` is compatible by the rule above:
   Compatible release held back by the MSRV (reported for both direct and
@@ -382,6 +385,12 @@ others in Step 6.
 
 Run `cargo deny --workspace --all-features check advisories` (or `cargo audit`
 if there is no `deny.toml`).
+
+A cooldown-held release whose changelog mentions a security fix but has no
+advisory yet (Step 2) gets the same treatment as the `--precise` case below,
+right away and without asking: audit the release diff, lock exactly that
+version, and commit it on its own, quoting the changelog line instead of an
+advisory ID.
 
 For each vulnerability or `unsound` advisory:
 

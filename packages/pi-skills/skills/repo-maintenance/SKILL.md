@@ -108,13 +108,33 @@ Check when lockfiles were last updated:
 Run a compatible upgrade when any of the following applies:
 
 - the last compatible upgrade is more than a few weeks old;
-- a compatible release fixes an advisory affecting a locked version;
+- a compatible release fixes an advisory affecting a locked version, or its
+  changelog mentions a security fix;
 - a release that ships the lockfile (a binary, container image or deployed app,
   not a library) is about to be cut; or
 - the user explicitly asked for a compatible upgrade.
 
 If none applies, ask before running the compatible upgrade, and still run the
 advisory, MSRV and major-version checks.
+
+## Security fixes and the release-age gate
+
+The one-day release-age gate protects against compromised releases. It never
+outranks a security fix: a fixed vulnerability that stays locked for a day is
+the bigger risk. A release counts as a security fix when either:
+
+- an advisory (RUSTSEC, GHSA, CVE) affecting a locked version names it as the
+  fix; or
+- its changelog, release notes or release commit says it fixes a security
+  issue, even when no advisory exists yet. Advisories are often published days
+  after the release.
+
+For every release held back by the gate, read its changelog or release notes
+(`references/changelogs.md`) to find these. Take a security fix right away,
+without waiting for the gate or asking, after auditing its release diff. When
+there is no advisory, the changelog rarely says enough to judge whether the
+issue affects us: assume it does, and quote the changelog line in the commit
+body instead of an advisory ID.
 
 ## Stop and ask
 
@@ -126,7 +146,8 @@ Gather the evidence first, then stop and ask the user when:
 - an update introduces an unallowed license, or an install script that must run
   (disabling an unneeded install script does not require approval);
 - a version younger than the one-day release-age gate is needed for anything
-  other than an audited fix for an applicable security advisory;
+  other than an audited security fix ("Security fixes and the release-age
+  gate");
 - a major upgrade requires a large migration, or upgrades conflict;
 - a workflow in one of our repositories needs an action not yet mirrored on
   `code.m4ss.net`;

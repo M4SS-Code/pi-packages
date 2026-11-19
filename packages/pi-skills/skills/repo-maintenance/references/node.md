@@ -35,8 +35,12 @@ provenance) than the version it replaces.
 Never write `minimumReleaseAge` or `trustPolicy` into `pnpm-workspace.yaml`.
 
 Do not install any version published less than 24 hours ago (1440 minutes)
-unless it fixes an applicable security advisory and passes a supply-chain diff
-audit (Step 5):
+unless it is a security fix (`SKILL.md`, "Security fixes and the release-age
+gate"), with or without an advisory, and passes a supply-chain diff audit
+(Step 5). The gate hides young releases from resolution, so to find them
+compare `pnpm outdated -r` with and without `--config.minimumReleaseAge=0`
+(read-only) and read the changelog of every release that only shows up
+without the gate.
 
 - Resolution (`update`, `update --latest`, `outdated`) picks the newest version
   at least a day old.
@@ -199,8 +203,10 @@ remaining advisory:
 
 ## 5. Taking a version younger than a day
 
-Use this exception **only** for a release that fixes an applicable security
-advisory (from Step 3):
+Use this exception **only** for a security fix: a release that fixes an
+applicable advisory (from Step 3), or whose changelog mentions a security fix
+when no advisory exists yet. Take it right away, without asking. Where the
+steps below name the advisory, quote the changelog line instead:
 
 1. Audit the diff from the currently locked version (`references/changelogs.md`)
    to confirm it contains only the fix. Stop and report immediately if the diff
@@ -243,8 +249,10 @@ peer group.
 - `typescript` + `svelte-check`, `typescript-eslint`
 
 Do not commit upgrades that introduce new unmet peer dependency warnings. Keep
-`@types/node` on the major matching the **oldest** supported Node.js release
-(`engines.node` and CI matrix), not the newest. Keep other `@types/*` packages
+`@types/node` on the major of the **oldest** Node.js release tested in CI
+(the oldest entry of the CI matrix, or the only version CI uses), not the
+newest. If `engines.node` allows an older major than CI tests, report the
+mismatch. Keep other `@types/*` packages
 aligned with their corresponding library major.
 
 For each major upgrade (or group):

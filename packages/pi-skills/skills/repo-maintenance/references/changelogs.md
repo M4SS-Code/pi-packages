@@ -1,6 +1,7 @@
 # Reviewing an upgrade
 
 Review every major upgrade and every `<1`-day release-age security exception
+(with or without an advisory)
 against the version locked immediately before this upgrade (i.e., after the
 compatible-upgrade commit).
 
