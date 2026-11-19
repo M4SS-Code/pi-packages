@@ -74,7 +74,9 @@ without the gate.
 Inspect the repository configuration:
 
 - **pnpm version**: `packageManager` (and `devEngines.packageManager`, if set)
-  in the root `package.json`.
+  in the root `package.json`. If neither is set, do not add one: it changes
+  the pnpm version for everyone working on the repository. Run with the
+  installed pnpm and mention the missing pin in the report.
 - **Workspace settings (`pnpm-workspace.yaml`)**: `packages`, `catalog` /
   `catalogs`, `minimumReleaseAgeExclude`, `trustPolicyExclude`, `allowBuilds`,
   `audit.ignore`, `overrides`, `patchedDependencies` and
@@ -143,6 +145,13 @@ Then handle these cases:
 - **If a minor TypeScript update introduces type errors**: Include small fixes
   in this commit; if the fixes are non-trivial, hold TypeScript back
   (`update -r '!typescript'`) and move it to its own commit.
+- **If the update breaks lint, formatting or the build** (for example a plugin
+  that fails at runtime with a newer host package, such as
+  `prettier-plugin-svelte` with a newer `prettier`): first check whether a
+  newer major of the plugin or its peer group fixes it (Step 6), and search
+  the plugin's issues for the error. If nothing fixes it, hold the host package
+  back with `update -r '!<name>'`, keeping its range, and report the hold with
+  the upstream issue. Do not pin an exact older version to get past the error.
 - **On policy errors**:
   - `ERR_PNPM_NO_MATURE_MATCHING_VERSION`: Follow the release-age gate rules
     above.

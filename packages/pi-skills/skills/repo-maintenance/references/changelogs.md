@@ -128,6 +128,11 @@ EOF
    `git log --oneline <old-sha>..<new-sha>` in the blobless clone (scoped with
    `-- <subdir>` in a monorepo).
 
+Never run `git log -S`, `-G` or `-p` over a whole history in a blobless clone:
+each commit it inspects downloads its blobs one request at a time, so the
+command can run for many minutes. Limit it to a range (`<old-sha>..<new-sha>`)
+and a path, or search the published package files instead.
+
 Also read any migration guide (`MIGRATION.md`, `UPGRADING.md`, or linked docs).
 Trust the published release diff over the changelog whenever they disagree or
 when the changelog omits changes.

@@ -63,7 +63,9 @@ Two rules apply to our repositories:
 
 - Load the `commit` skill before creating the first commit. It governs staging,
   message formatting and folding fixes into earlier commits; this skill defines
-  commit grouping, subjects and required checks. Never run `git push`.
+  commit grouping, subjects and required checks. If it is not available, stop
+  and ask before the first commit. Never run `git push`, and never bypass hooks
+  (`git commit --no-verify`).
 - Record the starting commit (`git rev-parse HEAD`, called `<base>` below),
   check `git status --short` (stop and ask if files the run will touch are
   already dirty), and create a temporary directory outside the repository
@@ -71,9 +73,11 @@ Two rules apply to our repositories:
   shell, so a variable does not survive: copy the path that `mktemp -d`
   prints literally into later commands, and never save it to a file. Put
   every temporary file in `<scratch>`: baselines, lockfile copies, build
-  logs, test projects, cloned upstream repositories and `git worktree`
-  checkouts. Never create other
-  paths in `/tmp`. At the end of the run, remove any worktrees
+  logs, test projects, downloaded and extracted packages
+  (`tar -xzf <file> -C <scratch>`), cloned upstream repositories and
+  `git worktree` checkouts. Never create other paths in `/tmp`. Before each commit, check `git status --short` for
+  untracked files the run created (extracted crates, tool state such as
+  `.pi/`): move them to `<scratch>` or leave them out, and never commit them. At the end of the run, remove any worktrees
   (`git worktree remove`) and then `<scratch>`.
 - Treat code in releases under review as untrusted: read it, and never build,
   test, install or execute anything from it before review.
