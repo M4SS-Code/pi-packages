@@ -57,8 +57,9 @@ without the gate.
   first read the changelog of the young version it wanted. If it is a security
   fix, go to Step 5. Otherwise:
   - Direct dependency: select the newest version at least a day old.
-  - Transitive dependency: hold back the parent package (`update -r '!<parent>'`).
-    Adding an `overrides` entry requires user approval.
+  - Transitive dependency: hold back the parent package
+    (`update -r '!<parent>'`). Adding an `overrides` entry requires user
+    approval.
 - Record each Step 5 exception (no approval needed) by exact version (never by
   bare package name), with a comment citing the advisory, or the changelog line
   when there is no advisory:
@@ -196,10 +197,9 @@ remaining advisory:
 1. **Check for a fix:** Check `patched_versions` in `pnpm audit --json` (`null`
    means no fix). Prefer `pnpm ... audit --fix=update`, which updates
    `pnpm-lock.yaml` and raises the range in `package.json`, without adding
-   overrides, and include the change in Step 4.
-   Plain `audit --fix` writes `overrides` to `pnpm-workspace.yaml`: ask the
-   user before adding an override. If the fix is younger than a day, follow
-   Step 5.
+   overrides, and include the change in Step 4. Plain `audit --fix` writes
+   `overrides` to `pnpm-workspace.yaml`: ask the user before adding an override.
+   If the fix is younger than a day, follow Step 5.
 2. **Check whether it affects this repository:** Read
    `https://github.com/advisories/<GHSA>` for affected functions and inputs,
    and run `pnpm why -r <name>` (`pnpm audit --prod` checks only runtime
@@ -280,11 +280,10 @@ peer group.
 - `typescript` + `svelte-check`, `typescript-eslint`
 
 Do not commit upgrades that introduce new unmet peer dependency warnings. Keep
-`@types/node` on the major of the **oldest** Node.js release tested in CI
-(the oldest entry of the CI matrix, or the only version CI uses), not the
-newest. If `engines.node` allows an older major than CI tests, report the
-mismatch. Keep other `@types/*` packages
-aligned with their corresponding library major.
+`@types/node` on the major of the **oldest** Node.js release tested in CI (the
+oldest entry of the CI matrix, or the only version CI uses), not the newest. If
+`engines.node` allows an older major than CI tests, report the mismatch. Keep
+other `@types/*` packages aligned with their corresponding library major.
 
 For each major upgrade (or group):
 
@@ -308,12 +307,11 @@ install scripts not listed in `allowBuilds` in `pnpm-workspace.yaml`. When an
 update triggers `ERR_PNPM_IGNORED_BUILDS`:
 
 - **If an existing package gained an install script in a minor or patch
-  release:** This is a supply-chain red flag (the list in Step 5, item 1).
-  Read the release diff (`references/changelogs.md`) to say what the script
-  does, then hold the package at its previous version (restore
-  `pnpm-lock.yaml` from git, or hold back its parent with
-  `update -r '!<parent>'`) and stop and report it.
-  Do not add it to `allowBuilds` and do not continue to the next bullet.
+  release:** This is a supply-chain red flag (the list in Step 5, item 1). Read
+  the release diff (`references/changelogs.md`) to say what the script does,
+  then hold the package at its previous version (restore `pnpm-lock.yaml` from
+  git, or hold back its parent with `update -r '!<parent>'`) and stop and report
+  it. Do not add it to `allowBuilds` and do not continue to the next bullet.
 - **Otherwise, inspect the install script:**
   - If the package works without running the script (e.g., prebuilt binaries
     come from optional platform dependencies, or the script is a no-op), set

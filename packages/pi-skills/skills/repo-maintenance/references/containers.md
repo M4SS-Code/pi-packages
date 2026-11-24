@@ -101,12 +101,12 @@ Official Images, `docker.io/<namespace>/<image>` for other Docker Hub images,
 and the registry's own name elsewhere (`quay.io/podman/stable`,
 `ghcr.io/<org>/<image>`). Rewrite short names such as `FROM alpine:3.24` to
 `FROM docker.io/library/alpine:3.24`, keeping the version (the upgrade is a
-separate commit), unless the repository's README,
-contributing guide or a comment in the file asks for short names; then leave
-them and say so in the report. Prefer Docker Official Images and images
-maintained by the upstream project (`docker.io/natsio/nats-box`,
-`quay.io/skopeo/stable`); if a file uses a third-party image for something an
-official image provides, report it and ask before replacing it.
+separate commit), unless the repository's README, contributing guide or a
+comment in the file asks for short names; then leave them and say so in the
+report. Prefer Docker Official Images and images maintained by the upstream
+project (`docker.io/natsio/nats-box`, `quay.io/skopeo/stable`); if a file uses
+a third-party image for something an official image provides, report it and ask
+before replacing it.
 
 **Never use a floating tag.** A tag is floating when it lacks any part of its
 shape in the table below: `latest`, `lts`, `stable`, `mainline`, `edge`,
@@ -147,10 +147,9 @@ not in the table, list its tags and copy the shape of the tag it already uses.
   ("Toolchains") to find which release of the failing crate fixes it.
 - **Node.js:** Use the Node.js major that CI uses (`node-version:`), or the one
   in `.nvmrc`, `.node-version`, or `engines.node` or `devEngines` in
-  `package.json`. If none of
-  them pins it, use the newest LTS major. A new major goes in its own commit,
-  and the project's Node.js checks (`check`, `lint`, `test` and `build`, as CI
-  runs them) must pass, as well as the image build.
+  `package.json`. If none of them pins it, use the newest LTS major. A new major
+  goes in its own commit, and the project's Node.js checks (`check`, `lint`,
+  `test` and `build`, as CI runs them) must pass, as well as the image build.
 - **Alpine Linux and Debian:** In a multi-stage Containerfile, every stage that
   builds a binary and the stage that runs it must use the same Alpine version
   or Debian codename: a binary built against a newer musl or glibc does not
@@ -212,12 +211,11 @@ production check. Commit it on its own with `pin` in the subject, not
 to the newest tag, because that would change the version that runs. Upgrade a
 pinned image, if at all, with the steps below.
 
-1. Find the version that runs in production: search the repository's
-   deployment files (Ansible, NixOS, Terraform, Helm, Kustomize, production
-   Compose and `.env` files), the database and broker containers its CI starts
-   (`services:` in `.github/workflows/` and `.forgejo/workflows/`), and its
-   documentation. If the repository does not say, stop
-   and ask which version runs in production.
+1. Find the version that runs in production: search the repository's deployment
+   files (Ansible, NixOS, Terraform, Helm, Kustomize, production Compose and
+   `.env` files), the database and broker containers its CI starts (`services:`
+   in `.github/workflows/` and `.forgejo/workflows/`), and its documentation. If
+   the repository does not say, stop and ask which version runs in production.
 2. Upgrade only to that version, or to the newest patch release of the same
    series. The series depends on the tag shape: for `X.Y.Z` images such as
    `nats`, the series is `X.Y` and patches change `Z` (`2.15.1` to `2.15.3`);

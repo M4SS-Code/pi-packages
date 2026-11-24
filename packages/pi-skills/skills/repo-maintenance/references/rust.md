@@ -122,14 +122,13 @@ resolved and later commands cannot change it, so `dups.sh` and the
      with `cargo +stable` instead (install it with
      `rustup toolchain install stable --profile minimal` if needed) and check
      again.
-   - **MSRV:** If the `Locking` line says `highest Rust 1.NN compatible`
-     (older Cargo says `latest Rust 1.NN compatible`), the MSRV is respected.
-     If it says only `highest compatible` while `rust-version` is set, the
-     resolver ignores the MSRV: also prefix every
-     command listed above with
-     `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback`, and note in the
-     final report that setting `resolver = "3"` makes this automatic once the
-     MSRV is `>= 1.84`.
+   - **MSRV:** If the `Locking` line says `highest Rust 1.NN compatible` (older
+     Cargo says `latest Rust 1.NN compatible`), the MSRV is respected. If it
+     says only `highest compatible` while `rust-version` is set, the resolver
+     ignores the MSRV: also prefix every command listed above with
+     `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback`, and note in the final
+     report that setting `resolver = "3"` makes this automatic once the MSRV is
+     `>= 1.84`.
 
    The cooldown prefix, the `+stable` toolchain and the MSRV prefix from this
    step are called the **Step 2 environment** below. The commands in this
@@ -353,8 +352,8 @@ others in Step 6.
      `cargo +1.NN check --locked --workspace --all-features` with the MSRV
      toolchain anyway, and list the missing MSRV job in the report. Do not add
      the job unless the user asked for a CI audit (`references/ci-audit.md`,
-     "What the jobs run"). Binary-only and unpublished crates do not need an MSRV
-     job.
+     "What the jobs run"). Binary-only and unpublished crates do not need an
+     MSRV job.
    - If `deny.toml` exists, run `cargo deny --workspace --all-features check`
      (checks licenses, bans and advisories), and stop and ask if a new
      dependency introduces an unallowed license. Otherwise run `cargo audit`.
@@ -486,11 +485,10 @@ For each upgrade (or coupled group):
    upgrade. If not, skip this upgrade and list it in the report.
 2. Audit the release diff and changelog (`references/changelogs.md`).
 3. Run `cargo check --workspace --all-targets --all-features`, with the Step 2
-   environment, and adapt code to
-   breaking changes. If our code relies on an API added after `.0`, set that
-   minor/patch version as the minimum requirement in `Cargo.toml`. If the
-   migration is large, revert, skip the upgrade, and report an estimate of the
-   work required.
+   environment, and adapt code to breaking changes. If our code relies on an API
+   added after `.0`, set that minor/patch version as the minimum requirement in
+   `Cargo.toml`. If the migration is large, revert, skip the upgrade, and report
+   an estimate of the work required.
 4. Run CI's checks and check for newly introduced duplicate versions (Step 8).
 5. Commit as `build(deps): upgrade <crate> to v<major>` (or `build(deps)!:` if
    it breaks a published library's public API; see `SKILL.md`, "Commit

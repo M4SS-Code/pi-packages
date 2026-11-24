@@ -44,9 +44,10 @@ A repository is **ours** when all of the following hold:
 
 1. Any remote in `git remote -v` is on `code.m4ss.net` or under
    `github.com/M4SS-Code` (SSH form `git@github.com:M4SS-Code/...`).
-2. It is **not** a mirror or fork of an external project (exclude `Mirror/<repo>`
-   on `code.m4ss.net` whose `original_url` is outside `M4SS-Code`, forks under
-   `M4SS-Code`, and action mirrors under `Actions/` except `Actions/ci-images`).
+2. It is **not** a mirror or fork of an external project (exclude
+   `Mirror/<repo>` on `code.m4ss.net` whose `original_url` is outside
+   `M4SS-Code`, forks under `M4SS-Code`, and action mirrors under `Actions/`
+   except `Actions/ci-images`).
 
 Two rules apply to our repositories:
 
@@ -216,13 +217,13 @@ names and versions of the actual change.
   Rust, Node.js, Go, pnpm.
 - `<major>` is the compatibility-defining prefix: `v0.23` for `0.23.x`, `v2`
   for `2.x`.
-- Mark a major upgrade with `!` (`build(deps)!: ...`) and explain what breaks
-  in the body when the project publishes a library to crates.io or npm and the
+- Mark a major upgrade with `!` (`build(deps)!: ...`) and explain what breaks in
+  the body when the project publishes a library to crates.io or npm and the
   upgraded dependency is part of its public API (re-exported, or used in public
   types/traits). Unpublished crates (`publish = false`, `"private": true`) and
-  binary-only crates do not take `!`, for major upgrades or MSRV bumps. For dependency
-  upgrades and MSRV bumps, this rule decides what counts as breaking, over the
-  `commit` skill's general `!` rule.
+  binary-only crates do not take `!`, for major upgrades or MSRV bumps. For
+  dependency upgrades and MSRV bumps, this rule decides what counts as breaking,
+  over the `commit` skill's general `!` rule.
 - Check `git log -- .github .forgejo` for whether the repository uses `ci:` or
   `chore(ci):`.
 - Write prose commit bodies wrapped at 72 columns that explain _why_ and _what

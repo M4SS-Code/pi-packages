@@ -159,7 +159,8 @@ it wasn't known whether they passed.
 - Mark every package or crate not meant for registry publication so a stray
   `cargo publish` or `pnpm publish -r` cannot release it:
   - Rust: `publish = false` in `Cargo.toml` (or `publish.workspace = true`).
-    (`cargo-deny` also requires this marker for `[licenses.private] ignore = true`.)
+    `cargo-deny` also requires this marker for
+    `[licenses.private] ignore = true`.
   - Node.js: `"private": true` in `package.json` (including the workspace root,
     apps, examples and internal tools).
 - Compare local manifests against the registries:
@@ -233,8 +234,8 @@ requiring workflow edits in their own commit.
 
 CI must pin the Rust version (`RUST_VERSION: 1.NN.P` in top-level `env:` and
 `FROM docker.io/library/rust:1.NN-...` in Containerfiles used only by CI) for
-`rustfmt`, `clippy`,
-`cargo-hack`, `doc` and `build`, rather than using floating `stable`.
+`rustfmt`, `clippy`, `cargo-hack`, `doc` and `build`, rather than using floating
+`stable`.
 
 Verify every job that runs `cargo clippy` (dedicated `clippy` jobs, combined
 `test` jobs, or cross-platform `build` jobs):
