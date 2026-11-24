@@ -147,9 +147,10 @@ When updating pinned toolchains in `Actions/ci-images`:
    except for the `FROM` base image.
 3. Enforce the 1-day release-age gate on non-security releases of Node.js,
    Go and pnpm (a release whose notes mention a security fix counts as a
-   security release, advisory or not). Rust has no release-age gate: take the latest stable release,
-   however recent. Patch/minor updates and new Rust stable releases are
-   routine; ask before bumping Node.js or Go to a new major.
+   security release, advisory or not). Rust has no release-age gate: take the
+   latest stable release, however recent. Patch/minor updates and new Rust
+   stable releases are routine; ask before bumping Node.js or Go to a new
+   major.
 4. Check whether `quay.io/podman/stable:<tag>` in the build workflow has a
    newer digest and update the pinned digest if so:
 

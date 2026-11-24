@@ -24,13 +24,13 @@ Run every pnpm command that resolves, installs or fixes (`update`, `add`,
 pnpm --config.minimumReleaseAge=1440 --config.trustPolicy=no-downgrade <command>
 ```
 
-Without these flags, pnpm silently installs releases younger than a day and
-adds them to `minimumReleaseAgeExclude`: its default one-day gate is not
-strict. Setting `minimumReleaseAge` explicitly, as these flags do, makes it
-strict, so pnpm fails with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` instead.
-`trustPolicy=no-downgrade` makes pnpm fail instead
-of installing a version with weaker publishing trust (for example, no
-provenance) than the version it replaces.
+Without these flags, pnpm silently installs releases younger than a day and adds
+them to `minimumReleaseAgeExclude`: its default one-day gate is not strict.
+Setting `minimumReleaseAge` explicitly, as these flags do, makes it strict, so
+pnpm fails with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` instead.
+`trustPolicy=no-downgrade` makes pnpm fail instead of installing a version with
+weaker publishing trust (for example, no provenance) than the version it
+replaces.
 
 Never write `minimumReleaseAge` or `trustPolicy` into `pnpm-workspace.yaml`.
 
@@ -84,6 +84,15 @@ Inspect the repository configuration:
 - **CI scripts**: The commands CI runs after `pnpm install --frozen-lockfile`
   (typically `check`, `lint`, `test` and `build`; in SvelteKit repositories
   `prepare` runs `svelte-kit sync` and `check` runs `svelte-check`).
+- **Generated code**: Gitignored directories that a build step generates, such
+  as Paraglide's `src/lib/paraglide` (from `paraglide-js compile` or its Vite
+  plugin). `svelte-check` fails until they exist, so generate them the way CI
+  does before running it. `paraglide-js compile` exits 0 even when
+  `project.inlang/settings.json` is broken, so `svelte-check` is the check
+  that counts.
+- **Code from CDNs**: URLs under `modules` in `project.inlang/settings.json`,
+  and any `import` or `<script src>` from jsDelivr, unpkg or esm.sh. They skip
+  the lockfile and the release-age gate (`SKILL.md`, "Stop and ask").
 - **Node.js versions**: `engines.node`, `.nvmrc` / `.node-version`, and the CI
   matrix.
 - **Exact pins**: Version specifiers without a range (`"1.2.3"`), or

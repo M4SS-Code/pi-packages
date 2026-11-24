@@ -44,7 +44,7 @@ For each image, note:
 - **The full reference:** registry, namespace, name, tag and any `@sha256:`
   digest.
 - **Where its version lives:** in the `FROM` or `image:` line, in an `ARG`
-  default (`ARG RUST_VERSION=1.96` with `FROM ...:${RUST_VERSION}-alpine3.23`),
+  default (`ARG RUST_VERSION=1.96` with `FROM ...:${RUST_VERSION}-alpine3.24`),
   or in a Compose variable (`${NATS_TAG:-2.12-alpine}`, or a `.env` file).
   If an `ARG` has no default, its value comes from a `--build-arg` in a CI
   workflow or from `args:` under a Compose service's `build:`. Change the
@@ -99,8 +99,8 @@ skopeo inspect --format '{{.Digest}}' docker://docker.io/library/nats:2.15.3-alp
 **Always write the full image name:** `docker.io/library/<image>` for Docker
 Official Images, `docker.io/<namespace>/<image>` for other Docker Hub images,
 and the registry's own name elsewhere (`quay.io/podman/stable`,
-`ghcr.io/<org>/<image>`). Rewrite short names such as `FROM alpine:3.23` to
-`FROM docker.io/library/alpine:3.23`, keeping the version (the upgrade is a
+`ghcr.io/<org>/<image>`). Rewrite short names such as `FROM alpine:3.24` to
+`FROM docker.io/library/alpine:3.24`, keeping the version (the upgrade is a
 separate commit), unless the repository's README,
 contributing guide or a comment in the file asks for short names; then leave
 them and say so in the report. Prefer Docker Official Images and images
@@ -110,7 +110,7 @@ official image provides, report it and ask before replacing it.
 
 **Never use a floating tag.** A tag is floating when it lacks any part of its
 shape in the table below: `latest`, `lts`, `stable`, `mainline`, `edge`,
-`alpine`, `slim`, `rust:slim-trixie` (no version), `postgres:18-alpine3.24`
+`alpine`, `slim`, `rust:slim-trixie` (no version), `postgres:19-alpine3.24`
 (no minor) and `nginx:1.30-alpine3.24` (no patch) are all floating;
 `rust:1.100-slim-trixie` and `alpine:3.24` are complete. Pin both the software
 version and the distro version wherever the image publishes distro variants.
@@ -126,15 +126,17 @@ Each official image names its tags differently. Use exactly these shapes:
 | Base OS            | `docker.io/library/debian`   | `<codename>-slim`                         | `debian:trixie-slim`      |
 | Toolchain          | `docker.io/library/rust`     | `1.NN-alpine3.NN`, `1.NN-slim-<codename>` | `rust:1.100-slim-trixie`  |
 | Toolchain          | `docker.io/library/node`     | `NN-alpine3.NN`, `NN-<codename>-slim`     | `node:26-trixie-slim`     |
-| Stateless service  | `docker.io/library/nginx`    | `X.Y.Z-alpine3.NN`, `X.Y.Z-<codename>`    | `nginx:1.30.6-alpine3.24` |
+| Stateless service  | `docker.io/library/nginx`    | `X.Y.Z-alpine3.NN`, `X.Y.Z-<codename>`    | `nginx:1.30.7-alpine3.24` |
 | Stateless tool     | `docker.io/natsio/nats-box`  | `X.Y.Z`                                   | `natsio/nats-box:0.20.2`  |
-| Database or broker | `docker.io/library/postgres` | `X.Y-alpine3.NN`, `X.Y-<codename>`        | `postgres:17.12-trixie`   |
+| Database or broker | `docker.io/library/postgres` | `X.Y-alpine3.NN`, `X.Y-<codename>`        | `postgres:19.0-trixie`    |
 | Database or broker | `docker.io/library/nats`     | `X.Y.Z-alpine3.NN`                        | `nats:2.15.3-alpine3.22`  |
 
 The examples omit the `docker.io/library/` prefix only to fit the table. Note
 that `node` puts `slim` after the codename and `rust` puts it before, and that
-`postgres` has no `slim` at all. For an image not in the table, list its tags
-(section 2) and copy the shape of the tag it already uses.
+`postgres` has no `slim` at all. Not every image publishes the newest Alpine
+version: at the time of writing, `nats` 2.15 has only `alpine3.22` tags, so
+check the tag list (section 2) instead of assuming `alpine3.24`. For an image
+not in the table, list its tags and copy the shape of the tag it already uses.
 
 ### Toolchains (Rust, Node.js) and base OS images
 
@@ -160,7 +162,7 @@ that `node` puts `slim` after the codename and `rust` puts it before, and that
 ### Stateless services and tools (nginx, caddy, nats-box, ...)
 
 Upgrade to the newest release in the same major, pinned to the newest distro
-version published for it (`nginx:1.30.6-alpine3.24`). Stop and ask before
+version published for it (`nginx:1.30.7-alpine3.24`). Stop and ask before
 changing the major version.
 
 For nginx, an even second number (`1.30`) is the stable branch and an odd one
@@ -176,16 +178,16 @@ their distro can corrupt existing data: PostgreSQL text indexes depend on the
 collation of the distro's C library and ICU, and a different glibc, musl or
 ICU version can make index scans miss rows or accept duplicate keys.
 
-If the image uses a floating tag (`postgres:18-alpine`), first pin it to the
+If the image uses a floating tag (`postgres:19-alpine`), first pin it to the
 exact tag it points to today: the tag with the same digest. Compare the
 floating tag's digest with the tags of its series, newest first, and stop at
 the first match:
 
 ```sh
-want=$(skopeo inspect --format '{{.Digest}}' docker://docker.io/library/postgres:18-alpine)
+want=$(skopeo inspect --format '{{.Digest}}' docker://docker.io/library/postgres:19-alpine)
 podman search --list-tags --limit 10000 docker.io/library/postgres \
   | awk 'NR > 1 {print $2}' \
-  | grep -E '^18\.[0-9]+-alpine3\.[0-9]+$' \
+  | grep -E '^19\.[0-9]+-alpine3\.[0-9]+$' \
   | sort -rV \
   | while read -r t; do
       if [ "$(skopeo inspect --format '{{.Digest}}' "docker://docker.io/library/postgres:$t")" = "$want" ]; then
@@ -196,11 +198,11 @@ podman search --list-tags --limit 10000 docker.io/library/postgres \
 ```
 
 Adapt the `grep -E` pattern to the floating tag. For a Debian-based tag such
-as `postgres:18` use `'^18\.[0-9]+-[a-z]+$'` (codename variants like
-`18.7-trixie`); if the major is unknown, as with `postgres:latest`, use
+as `postgres:19` use `'^19\.[0-9]+-[a-z]+$'` (codename variants like
+`19.0-trixie`); if the major is unknown, as with `postgres:latest`, use
 `'^[0-9]+\.[0-9]+-[a-z]+$'`. Use these two patterns only for Debian-based
 tags: for an Alpine tag keep the `-alpine3\.[0-9]+` pattern above, or the loop
-prints `18.7-alpine`, which is still floating. Within a Debian tag, other
+prints `19.0-alpine`, which is still floating. Within a Debian tag, other
 codenames the pattern lets through do no harm, because only a tag with the
 same digest is printed.
 
@@ -277,8 +279,8 @@ build(docker): upgrade Rust to v1.100
 build(docker): upgrade Alpine Linux to v3.24 / Rust to v1.100
 build(docker): upgrade Debian to Trixie
 build(docker): upgrade Node.js to v26
-build(docker): upgrade nginx to v1.30.6
-build(docker): pin Postgres to v18.7
+build(docker): upgrade nginx to v1.30.7
+build(docker): pin Postgres to v19.0
 ```
 
 Put the switch to full image names in its own commit

@@ -69,18 +69,23 @@ Two rules apply to our repositories:
 - Record the starting commit (`git rev-parse HEAD`, called `<base>` below),
   check `git status --short` (stop and ask if files the run will touch are
   already dirty), and create a temporary directory outside the repository
-  (`mktemp -d`, called `<scratch>` below). Each command may run in a new
-  shell, so a variable does not survive: copy the path that `mktemp -d`
-  prints literally into later commands, and never save it to a file. Put
-  every temporary file in `<scratch>`: baselines, lockfile copies, build
-  logs, test projects, downloaded and extracted packages
-  (`tar -xzf <file> -C <scratch>`), cloned upstream repositories and
-  `git worktree` checkouts. Never create other paths in `/tmp`. Before each commit, check `git status --short` for
-  untracked files the run created (extracted crates, tool state such as
-  `.pi/`): move them to `<scratch>` or leave them out, and never commit them. At the end of the run, remove any worktrees
-  (`git worktree remove`) and then `<scratch>`.
+  (`mktemp -d`, called `<scratch>` below). Each command may run in a new shell,
+  so a variable does not survive: copy the path that `mktemp -d` prints
+  literally into later commands, and never save it to a file. Put every
+  temporary file in `<scratch>`: baselines, lockfile copies, build logs, test
+  projects, downloaded and extracted packages (`tar -xzf <file> -C <scratch>`),
+  cloned upstream repositories and `git worktree` checkouts. Never create other
+  paths in `/tmp`. Before each commit, check `git status --short` for untracked
+  files the run created (extracted crates, tool state such as `.pi/`): move them
+  to `<scratch>` or leave them out, and never commit them. At the end of the
+  run, remove any worktrees (`git worktree remove`) and then `<scratch>`.
 - Treat code in releases under review as untrusted: read it, and never build,
   test, install or execute anything from it before review.
+- Never run `git log -S`, `-G` or `-p` over a whole history, in the
+  repository or in an upstream clone: on a large history it can run for many
+  minutes, and in a clone made with `--filter` it also downloads the missing
+  blobs one request at a time. Limit it to a range (`<old-sha>..<new-sha>`)
+  and a path, or search the published package files instead.
 - Use `curl` against `https://api.github.com/...` or
   `raw.githubusercontent.com` for read-only GitHub queries instead of `gh`.
   Pass `-H "Authorization: Bearer ${GITHUB_TOKEN:-$GH_TOKEN}"` only when
@@ -156,6 +161,11 @@ Gather the evidence first, then stop and ask the user when:
 - a workflow in one of our repositories needs an action not yet mirrored on
   `code.m4ss.net`;
 - aligning a repository with siblings would drop an existing check;
+- the repository loads code from a CDN at build or run time (an `import` or
+  `<script src>` from jsDelivr, unpkg or esm.sh, or the URLs under `modules` in
+  `project.inlang/settings.json`). That code skips the lockfile and the
+  release-age gate: report each URL and the version it loads, and ask before
+  changing it;
 - any action would push, publish or delete.
 
 **Malicious release:** If an advisory, diff or trust check indicates a malicious
@@ -189,7 +199,7 @@ Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
 | Routine refresh of pinned actions         | `chore(ci): upgrade the pinned actions`                         |
 | Runner image                              | `chore(ci): run on Ubuntu 26.04`                                |
 | Full image names in a Containerfile       | `build(docker): use fully qualified image names`                |
-| Floating image tag pinned, same digest    | `build(docker): pin Postgres to v18.7`                          |
+| Floating image tag pinned, same digest    | `build(docker): pin Postgres to v19.0`                          |
 | Rust image in a Containerfile             | `build(docker): upgrade Rust to v1.NN`                          |
 | Alpine image, with the Rust in its tag    | `build(docker): upgrade Alpine Linux to v3.NN / Rust to v1.NN`  |
 | Debian image                              | `build(docker): upgrade Debian to Trixie`                       |

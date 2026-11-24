@@ -1,9 +1,8 @@
 # Reviewing an upgrade
 
 Review every major upgrade and every `<1`-day release-age security exception
-(with or without an advisory)
-against the version locked immediately before this upgrade (i.e., after the
-compatible-upgrade commit).
+(with or without an advisory) against the version locked immediately before this
+upgrade (i.e., after the compatible-upgrade commit).
 
 ## 1. Find local usage
 
@@ -110,7 +109,7 @@ EOF
    `npm view <name>@<version> gitHead` / provenance attestation):
 
    ```sh
-   git clone -q --filter=blob:none --no-checkout <repository> <scratch>/<name>-repo
+   git clone -q --filter=blob:limit=1m --no-checkout <repository> <scratch>/<name>-repo
    git -C <scratch>/<name>-repo ls-tree -r --name-only <sha> | grep -i -E -f <scratch>/changelog-filter.txt
    git -C <scratch>/<name>-repo show <sha>:<path>
    ```
@@ -125,13 +124,8 @@ EOF
      belongs to the target package. If release notes only list PR titles, fetch
      the PRs that touch our usage.
 4. **Fallback (`git log`)**: If no changelog or release notes exist, inspect
-   `git log --oneline <old-sha>..<new-sha>` in the blobless clone (scoped with
+   `git log --oneline <old-sha>..<new-sha>` in the clone (scoped with
    `-- <subdir>` in a monorepo).
-
-Never run `git log -S`, `-G` or `-p` over a whole history in a blobless clone:
-each commit it inspects downloads its blobs one request at a time, so the
-command can run for many minutes. Limit it to a range (`<old-sha>..<new-sha>`)
-and a path, or search the published package files instead.
 
 Also read any migration guide (`MIGRATION.md`, `UPGRADING.md`, or linked docs).
 Trust the published release diff over the changelog whenever they disagree or

@@ -514,7 +514,7 @@ back the old version, check the upstream status of each offender:
 2. Check whether it is already upgraded on the upstream default branch:
 
    ```sh
-   git clone -q --filter=blob:none --no-checkout <repository> <scratch>/<offender>-repo
+   git clone -q --filter=blob:limit=1m --no-checkout <repository> <scratch>/<offender>-repo
    git -C <scratch>/<offender>-repo grep -l -E '^name = "<offender>"' origin/HEAD -- '*Cargo.toml'
    git -C <scratch>/<offender>-repo show origin/HEAD:<manifest-path>
    git -C <scratch>/<offender>-repo log --oneline <published-sha>..origin/HEAD

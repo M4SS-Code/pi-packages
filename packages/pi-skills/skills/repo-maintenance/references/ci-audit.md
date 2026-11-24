@@ -55,11 +55,12 @@ it wasn't known whether they passed.
 
 - **Actions**: Pin every `uses:` to a full 40-character commit SHA followed by
   a comment with the most specific release tag (`# v7.0.1`, not `# v7`), or the
-  branch name if the action makes no releases (`dtolnay/rust-toolchain@<sha> # master`).
+  branch name if the action makes no releases
+  (`dtolnay/rust-toolchain@<sha> # master`).
 - **Verify existing action pins**: Resolve each tag (see "Refreshing pinned
   actions", step 2) and confirm the pinned SHA is the dereferenced commit and is
-  the same in `.github/` and `.forgejo/` twins. For branch pins on GitHub, verify the commit belongs to the upstream
-  branch rather than a fork:
+  the same in `.github/` and `.forgejo/` twins. For branch pins on GitHub,
+  verify the commit belongs to the upstream branch rather than a fork:
   `curl -sS https://api.github.com/repos/<owner>/<repo>/compare/<sha>...<branch> | jq -r .status`
   must return `ahead` or `identical`. On `code.m4ss.net`, mirrors only hold
   upstream commits, so checking HTTP 200 is sufficient:
@@ -212,14 +213,15 @@ them every couple of months, or immediately for security fixes or breakages:
    auditing does not have the action's commits, so clone the action first:
 
    ```sh
-   git clone -q --bare --filter=blob:none https://github.com/<owner>/<repo> <scratch>/<repo>-action.git
+   git clone -q --bare --filter=blob:limit=1m https://github.com/<owner>/<repo> <scratch>/<repo>-action.git
    git -C <scratch>/<repo>-action.git merge-base --is-ancestor <sha> <tag> && echo "included in <tag>"
    ```
 
    If it prints "included", switch the pin to the release tag.
 
-Use the subjects in `SKILL.md`, "Commit subjects", noting any security fixes, runtime changes or workflow adjustments in the body. Put major action
-upgrades requiring workflow edits in their own commit.
+Use the subjects in `SKILL.md`, "Commit subjects", noting any security fixes,
+runtime changes or workflow adjustments in the body. Put major action upgrades
+requiring workflow edits in their own commit.
 
 ## Toolchains
 
