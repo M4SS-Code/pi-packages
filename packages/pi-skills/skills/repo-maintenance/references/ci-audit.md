@@ -59,8 +59,10 @@ it wasn't known whether they passed.
   (`dtolnay/rust-toolchain@<sha> # master`).
 - **Verify existing action pins**: Resolve each tag (see "Refreshing pinned
   actions", step 2) and confirm the pinned SHA is the dereferenced commit and is
-  the same in `.github/` and `.forgejo/` twins. For branch pins on GitHub,
-  verify the commit belongs to the upstream branch rather than a fork:
+  the same in `.github/` and `.forgejo/` twins, except where the
+  "`.github/` and `.forgejo/` twins" rule in `references/forgejo.md` lets them
+  differ. For branch pins on GitHub, verify the commit belongs to the upstream
+  branch rather than a fork:
   `curl -sS https://api.github.com/repos/<owner>/<repo>/compare/<sha>...<branch> | jq -r .status`
   must return `ahead` or `identical`. On `code.m4ss.net`, mirrors only hold
   upstream commits, so checking HTTP 200 is sufficient:
@@ -78,7 +80,9 @@ it wasn't known whether they passed.
   3. Run `curl -fsSL` only when the file is missing, then always check it with
      `sha256sum -c`, whether it came from the cache or the network.
 
-  When bumping the version, update the SHA256 in the same commit. Example:
+  When bumping the version, update the SHA256 in the same commit. Example
+  (in a `.forgejo/workflows/` file of our repositories, write `uses:` as
+  `https://code.m4ss.net/Actions/cache@<sha>` instead):
 
   ```yaml
   env:
@@ -88,7 +92,7 @@ it wasn't known whether they passed.
     NIX_INSTALLER_SHA256: 59a1841db7d41d5127163cc8acad45a04b0d73e95a022269d4b9e7ae2ad7fab2
   steps:
     - name: Cache nix-installer
-      uses: https://code.m4ss.net/Actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: /tmp/nix-installer
         key: nix-installer-x86_64-linux-${{ env.NIX_INSTALLER_VERSION }}
@@ -123,9 +127,11 @@ it wasn't known whether they passed.
 - Pass `--locked` to every Cargo build/test command and `--frozen-lockfile` to
   `pnpm install`.
 - Run `clippy` with `--all-targets` and relevant feature combinations on the
-  pinned Rust toolchain (see "Toolchains"). Crates published to crates.io also
-  need an MSRV job with the `rust-version` toolchain; binaries and unpublished
-  crates do not.
+  pinned Rust toolchain (see "Toolchains"). Library crates published to
+  crates.io (crates with a library target, even if they also ship a binary)
+  also need an MSRV job with the `rust-version` toolchain; binary-only and
+  unpublished crates do not, even when a binary is published for
+  `cargo install`.
 - Run `cargo-deny` when `deny.toml` exists, and verify `[graph] targets` in
   `deny.toml`:
   - Library: omit `targets` so `cargo-deny` checks all targets.
@@ -226,7 +232,8 @@ requiring workflow edits in their own commit.
 ## Toolchains
 
 CI must pin the Rust version (`RUST_VERSION: 1.NN.P` in top-level `env:` and
-`FROM rust:1.NN-...` in CI `Dockerfile`s) for `rustfmt`, `clippy`,
+`FROM docker.io/library/rust:1.NN-...` in Containerfiles used only by CI) for
+`rustfmt`, `clippy`,
 `cargo-hack`, `doc` and `build`, rather than using floating `stable`.
 
 Verify every job that runs `cargo clippy` (dedicated `clippy` jobs, combined
@@ -272,15 +279,22 @@ To bump a pinned toolchain:
    vX", or as "no release of <crate> compiles on 1.NN yet" only if the newest
    one fails too. Do not rely on issue threads or changelogs alone for this.
 3. Update the version string everywhere it appears: `RUST_VERSION`,
-   `toolchain:` inputs, job `name` strings (e.g., `clippy / 1.NN.P`),
-   Dockerfiles used only by CI, and cache keys, in both
-   `.github/workflows/` and `.forgejo/workflows/`, and `channel` in
-   `rust-toolchain.toml` if it pins the same version. Then check that no
-   occurrence is left; this must print nothing:
-   `git grep -n -F '<old version>' -- .github .forgejo ':(glob)**/rust-toolchain*'`. Bump the Rust image
-   in the other Containerfiles in a separate commit
+   `toolchain:` inputs, job `name` strings (e.g., `clippy / 1.NN.P`) and
+   cache keys, in both `.github/workflows/` and `.forgejo/workflows/`, and
+   `channel` in `rust-toolchain.toml` if it pins the same version. Then check
+   that no occurrence is left; this must print nothing:
+   `git grep -n -F '<old 1.NN.P>' -- .github .forgejo ':(glob)**/rust-toolchain*'`.
+4. Containerfiles used only by CI are the ones a workflow builds only to run
+   CI jobs in, not ones it publishes or deploys. Find the Containerfiles the
+   workflows build with
+   `git grep -n -E '(podman|docker) build|file:|context:' -- .github .forgejo`.
+   They carry only `1.NN` (in the `FROM` tag or an `ARG` default), so skip
+   this item when the minor version is unchanged. Otherwise update them in
+   this same commit, then check that none is left; this must print nothing:
+   `git grep -n -w -F '<old 1.NN>' -- <each CI-only Containerfile>`.
+   Bump the Rust image in the other Containerfiles in a separate commit
    (`references/containers.md`).
-4. Commit as `chore(ci): upgrade Rust to v1.NN.P` (or `... Rust beta to ...` /
+5. Commit as `chore(ci): upgrade Rust to v1.NN.P` (or `... Rust beta to ...` /
    `... Rust nightly to YYYY-MM-DD`).
 
 ## Keeping our repositories alike

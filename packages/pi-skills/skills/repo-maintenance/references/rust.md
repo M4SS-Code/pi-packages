@@ -3,11 +3,13 @@
 Follow these steps in order. If `Cargo.lock` is not tracked in git, skip the
 compatible-upgrade commit and run the remaining steps.
 
-Create commits in this order (omit any step that has no changes):
+Create commits in this order (omit any step that has no changes). An MSRV bump
+approved in Step 7 (not Step 4) goes right before the upgrade that needed it.
 
 ```text
+build(deps): check the targets CI builds in cargo-deny   (Step 1, [graph])
 build(deps): allow the <license> license    (the baseline already needs it)
-build!: bump MSRV to v1.NN           (build: for binaries and unpublished crates)
+build!: bump MSRV to v1.NN           (build: for binary-only and unpublished crates)
 style(clippy): fix warnings enabled by the MSRV bump
 refactor: ...                        (code that was waiting on the new MSRV)
 build(deps): upgrade semver compatible Rust dependencies
@@ -31,7 +33,8 @@ Inspect the repository configuration:
 - **Target graph (`deny.toml` `[graph]`)**:
   - First verify `deny.toml` `[graph] targets` matches what CI builds
     (`references/ci-audit.md`, "What the jobs run"). If it mismatches, fix
-    `deny.toml` in its own commit before recording the baseline.
+    `deny.toml` in its own commit before recording the baseline
+    (`build(deps): check the targets CI builds in cargo-deny`).
   - Translate `[graph]` into `<graph>` flags for `cargo tree` so it inspects
     the exact graph `cargo-deny` checks:
 
@@ -95,7 +98,10 @@ unless it is a security fix (`SKILL.md`, "Security fixes and the release-age
 gate"; Step 6), with or without an advisory. Cargo enforces this
 with `CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day"`. Prefix **every** `cargo`
 command that can change `Cargo.lock` with it: `update`, and after manifest
-edits `fetch`, `check`, `build`, `clippy`, `test` and `tree`. Never write
+edits `fetch`, `check`, `build`, `clippy`, `test` and `tree`. Once a prefixed
+`update` or `fetch` has run after the last manifest edit, the lock is
+resolved and later commands cannot change it, so `dups.sh` and the
+`cargo tree` calls in this file need no prefix. Never write
 `global-min-publish-age` into `.cargo/config.toml`.
 
 1. Check that the cooldown is active and whether the resolver respects the
@@ -126,7 +132,10 @@ edits `fetch`, `check`, `build`, `clippy`, `test` and `tree`. Never write
      MSRV is `>= 1.84`.
 
    The cooldown prefix, the `+stable` toolchain and the MSRV prefix from this
-   step are called the **Step 2 environment** below.
+   step are called the **Step 2 environment** below. The commands in this
+   file show only the cooldown prefix. If this step added the others, add
+   them to every command that shows the cooldown prefix, for example:
+   `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE="1 day" cargo +stable update`.
 
 2. Update `Cargo.lock`:
 
@@ -304,9 +313,10 @@ others in Step 6.
      `[![Rustc Version 1.NN+](https://img.shields.io/badge/rustc-1.NN+-lightgray.svg)](https://blog.rust-lang.org/YYYY/MM/DD/Rust-1.NN.0/)`
      (get the release date from `rust-lang/rust`'s `RELEASES.md` and verify the
      URL resolves).
-4. Commit as `build!: bump MSRV to v1.NN` for a crate published to crates.io,
-   or `build: bump MSRV to v1.NN` for binaries and unpublished crates. State
-   what required the bump and, for a published crate, end with what breaks:
+4. Commit as `build!: bump MSRV to v1.NN` for a library crate published to
+   crates.io, or `build: bump MSRV to v1.NN` for binary-only and unpublished
+   crates (`references/ci-audit.md`, "What the jobs run"). State
+   what required the bump and, for a library crate, end with what breaks:
 
    ```text
    build!: bump MSRV to v1.89
@@ -338,12 +348,12 @@ others in Step 6.
    - If CI has an MSRV job, run its commands with the MSRV toolchain
      (`rustup toolchain install 1.NN --profile minimal`) to catch crates that
      understate `rust-version`.
-   - If a crate published to crates.io (Step 1, "Published crates") sets
+   - If a library crate published to crates.io (Step 1, "Published crates") sets
      `rust-version` but CI has no MSRV job, run
      `cargo +1.NN check --locked --workspace --all-features` with the MSRV
      toolchain anyway, and list the missing MSRV job in the report. Do not add
      the job unless the user asked for a CI audit (`references/ci-audit.md`,
-     "What the jobs run"). Binaries and unpublished crates do not need an MSRV
+     "What the jobs run"). Binary-only and unpublished crates do not need an MSRV
      job.
    - If `deny.toml` exists, run `cargo deny --workspace --all-features check`
      (checks licenses, bans and advisories), and stop and ask if a new
@@ -387,7 +397,7 @@ Run `cargo deny --workspace --all-features check advisories` (or `cargo audit`
 if there is no `deny.toml`).
 
 A cooldown-held release whose changelog mentions a security fix but has no
-advisory yet (Step 2) gets the same treatment as the `--precise` case below,
+advisory yet (Step 3) gets the same treatment as the `--precise` case below,
 right away and without asking: audit the release diff, lock exactly that
 version, and commit it on its own, quoting the changelog line instead of an
 advisory ID.
@@ -468,11 +478,12 @@ For each upgrade (or coupled group):
    `check` or `build`, which run build scripts) with the Step 2 environment.
    `cargo fetch` succeeds even when the upgrade needs a newer Rust: if its
    output has an `Adding` or `Updating` line ending in `(requires Rust 1.NN)`
-   with 1.NN above the MSRV, revert `Cargo.toml` and `Cargo.lock`. If Step 4
-   has not asked the user yet, add it to Step 4's MSRV question. If it has,
-   stop and ask with the same evidence Step 4 collects; if the user approves,
-   commit the MSRV bump (and Step 4's lint fixes) on top of the current
-   branch, then retry this upgrade.
+   with 1.NN above the MSRV, revert `Cargo.toml` and `Cargo.lock`. Then stop
+   and ask about the MSRV bump, with the same evidence Step 4 collects (if
+   Step 4's own MSRV question is still waiting for an answer, add this
+   upgrade to it instead). If the user approves, commit the MSRV bump (and
+   Step 4's lint fixes) on top of the current branch, then retry this
+   upgrade. If not, skip this upgrade and list it in the report.
 2. Audit the release diff and changelog (`references/changelogs.md`).
 3. Run `cargo check --workspace --all-targets --all-features`, with the Step 2
    environment, and adapt code to
@@ -539,8 +550,9 @@ duplicate skips to `deny.toml` without asking.
 Check whether existing holds and workarounds are now obsolete:
 
 - `[patch]` entries and git dependencies waiting on an upstream release;
-- `=` and `<` version pins (from Step 3): check the comment or `git log -S`
-  commit that added the pin to see if the reason still holds;
+- `=` and `<` version pins (from Step 3): check the comment, or the commit
+  that added the pin (`git log -S'<pin>' -- '*Cargo.toml'`), to see if the
+  reason still holds;
 - `deny.toml`: `[bans] skip` and `skip-tree` entries for resolved duplicates,
   and `[advisories] ignore` entries that no longer match;
 - `--precise` lockfile holds mentioned in earlier commit messages (which

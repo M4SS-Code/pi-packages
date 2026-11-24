@@ -155,8 +155,7 @@ When updating pinned toolchains in `Actions/ci-images`:
    newer digest and update the pinned digest if so:
 
    ```sh
-   skopeo inspect --raw docker://quay.io/podman/stable:<tag> > <scratch>/manifest.json
-   skopeo manifest-digest <scratch>/manifest.json
+   skopeo inspect --format '{{.Digest}}' docker://quay.io/podman/stable:<tag>
    ```
 
 5. Commit per `SKILL.md`, "Commit subjects". `ci-images` and workflow pins can

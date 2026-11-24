@@ -24,6 +24,9 @@ Run every pnpm command that resolves, installs or fixes (`update`, `add`,
 pnpm --config.minimumReleaseAge=1440 --config.trustPolicy=no-downgrade <command>
 ```
 
+Below, `pnpm ... <command>` stands for exactly this: type the two flags in
+place of `...`, never the dots themselves.
+
 Without these flags, pnpm silently installs releases younger than a day and adds
 them to `minimumReleaseAgeExclude`: its default one-day gate is not strict.
 Setting `minimumReleaseAge` explicitly, as these flags do, makes it strict, so
@@ -50,12 +53,15 @@ without the gate.
   `minimumReleaseAgeExclude`. An install without them, such as a plain
   `pnpm install --frozen-lockfile` in CI, does not check and installs the
   locked version, so CI is not a safety net for the gate.
-- If a command fails with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` outside Step 5:
+- If a command fails with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` outside Step 5,
+  first read the changelog of the young version it wanted. If it is a security
+  fix, go to Step 5. Otherwise:
   - Direct dependency: select the newest version at least a day old.
   - Transitive dependency: hold back the parent package (`update -r '!<parent>'`).
     Adding an `overrides` entry requires user approval.
-- Record approved Step 5 exceptions by exact version (never by bare package
-  name), with a comment citing the advisory:
+- Record each Step 5 exception (no approval needed) by exact version (never by
+  bare package name), with a comment citing the advisory, or the changelog line
+  when there is no advisory:
 
   ```yaml
   minimumReleaseAgeExclude:
@@ -129,11 +135,18 @@ Then handle these cases:
   `.forgejo/workflows/` twins.
 - **If exact pins exist** (no range prefix): Check whether a comment or the
   commit that added the pin gives a reason (a standing hold for Step 9). If
-  not, update it within its current major: run
-  `pnpm ... update -r --latest <name>` and check the new major in
-  `package.json`. If the major changed, put the previous version back with
-  `pnpm ... update -r <name>@<previous-version>` and handle the new major in
-  Step 6 instead.
+  not, update it to the newest release of its current major (for `1.2.3`,
+  `<major>` is `1`; for `0.3.1`, it is `0.3`; a `0.0.x` pin has no newer
+  release in its major, so leave it for Step 6), in each package that pins it.
+  `<package>` is the `name` in that package's `package.json`, also in a
+  single-package repository. This takes three commands, because `update`
+  rewrites the exact pin as a range:
+  `pnpm ... --filter <package> update '<name>@^<major>'`, then read the
+  version it locked with
+  `pnpm --filter <package> list <name> --depth 0 --json | jq -r '.[0] | (.dependencies // {}) + (.devDependencies // {}) | .["<name>"].version'`,
+  and pin that version exactly with
+  `pnpm ... --filter <package> add <name>@<that-version> --save-exact`. A
+  newer major is handled in Step 6.
 - **Update pnpm in `packageManager`**: `pnpm update -r` can already have
   changed the pnpm version in `packageManager` (or
   `devEngines.packageManager`). Check `git diff -- package.json`: if the pnpm
@@ -295,8 +308,12 @@ install scripts not listed in `allowBuilds` in `pnpm-workspace.yaml`. When an
 update triggers `ERR_PNPM_IGNORED_BUILDS`:
 
 - **If an existing package gained an install script in a minor or patch
-  release:** Treat this as a supply-chain red flag and audit the release diff
-  first (Step 5).
+  release:** This is a supply-chain red flag (the list in Step 5, item 1).
+  Read the release diff (`references/changelogs.md`) to say what the script
+  does, then hold the package at its previous version (restore
+  `pnpm-lock.yaml` from git, or hold back its parent with
+  `update -r '!<parent>'`) and stop and report it.
+  Do not add it to `allowBuilds` and do not continue to the next bullet.
 - **Otherwise, inspect the install script:**
   - If the package works without running the script (e.g., prebuilt binaries
     come from optional platform dependencies, or the script is a no-op), set

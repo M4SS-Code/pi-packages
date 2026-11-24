@@ -84,8 +84,10 @@ Two rules apply to our repositories:
 - Never run `git log -S`, `-G` or `-p` over a whole history, in the
   repository or in an upstream clone: on a large history it can run for many
   minutes, and in a clone made with `--filter` it also downloads the missing
-  blobs one request at a time. Limit it to a range (`<old-sha>..<new-sha>`)
-  and a path, or search the published package files instead.
+  blobs one request at a time. In an upstream clone, limit it to a range
+  (`<old-sha>..<new-sha>`) and a path, or search the published package files
+  instead. In the repository being maintained, a path is enough
+  (`git log -S'<text>' -- Cargo.toml`).
 - Use `curl` against `https://api.github.com/...` or
   `raw.githubusercontent.com` for read-only GitHub queries instead of `gh`.
   Pass `-H "Authorization: Bearer ${GITHUB_TOKEN:-$GH_TOKEN}"` only when
@@ -179,12 +181,15 @@ questions at the top of the report.
 ## Commit subjects
 
 The repository's own commit history takes precedence (per the `commit` skill).
-Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
+Otherwise use these subjects. Anything in `<>`, and `NN`, `N`, `P`, `X.Y`
+and `YYYY`, is a placeholder to fill in. Rows with concrete names (an action,
+an image, a version, `RustCrypto`) are examples: keep the shape and put in the
+names and versions of the actual change.
 
 | Change                                    | Subject                                                         |
 | ----------------------------------------- | --------------------------------------------------------------- |
-| MSRV bump, crate published to crates.io   | `build!: bump MSRV to v1.NN`                                    |
-| MSRV bump, binary or unpublished crate    | `build: bump MSRV to v1.NN`                                     |
+| MSRV bump, library published to crates.io | `build!: bump MSRV to v1.NN`                                    |
+| MSRV bump, binary-only or unpublished     | `build: bump MSRV to v1.NN`                                     |
 | Lints enabled by the MSRV bump            | `style(clippy): fix warnings enabled by the MSRV bump`          |
 | Rust dependencies within declared ranges  | `build(deps): upgrade semver compatible Rust dependencies`      |
 | Node dependencies within declared ranges  | `build(deps): upgrade semver compatible Node dependencies`      |
@@ -194,6 +199,7 @@ Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
 | Family of coupled crates                  | `build(deps): upgrade RustCrypto dependencies`                  |
 | Ignore an inapplicable advisory           | `build(deps): ignore RUSTSEC-YYYY-NNNN`                         |
 | Allow a license in `deny.toml`            | `build(deps): allow the <license> license`                      |
+| `deny.toml` targets fixed to match CI     | `build(deps): check the targets CI builds in cargo-deny`        |
 | Pinned Rust toolchain in CI               | `chore(ci): upgrade Rust to v1.NN.P`                            |
 | Single pinned action                      | `chore(ci): upgrade actions/checkout to v7.0.1`                 |
 | Routine refresh of pinned actions         | `chore(ci): upgrade the pinned actions`                         |
@@ -206,13 +212,15 @@ Otherwise use these subjects (`v1.NN`, `<name>` and `<major>` are placeholders):
 | Node.js or another image                  | `build(docker): upgrade Node.js to v26`                         |
 | Toolchains in `Actions/ci-images`         | `ci: bump Rust to 1.NN.P, Node.js to 24.X.Y and pnpm to 12.X.Y` |
 
+- For `Actions/ci-images`, name only the toolchains that changed, in the order
+  Rust, Node.js, Go, pnpm.
 - `<major>` is the compatibility-defining prefix: `v0.23` for `0.23.x`, `v2`
   for `2.x`.
 - Mark a major upgrade with `!` (`build(deps)!: ...`) and explain what breaks
   in the body when the project publishes a library to crates.io or npm and the
   upgraded dependency is part of its public API (re-exported, or used in public
   types/traits). Unpublished crates (`publish = false`, `"private": true`) and
-  binaries do not take `!`, for major upgrades or MSRV bumps. For dependency
+  binary-only crates do not take `!`, for major upgrades or MSRV bumps. For dependency
   upgrades and MSRV bumps, this rule decides what counts as breaking, over the
   `commit` skill's general `!` rule.
 - Check `git log -- .github .forgejo` for whether the repository uses `ci:` or

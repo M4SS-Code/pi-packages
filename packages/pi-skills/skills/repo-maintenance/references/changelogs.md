@@ -102,7 +102,15 @@ EOF
 ```
 
 1. **Published package files**:
-   `(cd <extracted-dir> && find . -type f | grep -i -E -f <scratch>/changelog-filter.txt)`
+   - Rust: the extracted crate from section 2,
+     `${CARGO_HOME:-$HOME/.cargo}/registry/src/index.crates.io-*/<crate>-<new>`:
+     `(cd <that directory> && find . -type f | grep -i -E -f <scratch>/changelog-filter.txt)`.
+   - Node.js: list the files that changed between the two versions with
+     `npm diff --diff=<name>@<old> --diff=<name>@<new> --diff-name-only | grep -i -E -f <scratch>/changelog-filter.txt`,
+     then read a match with
+     `npm diff --diff=<name>@<old> --diff=<name>@<new> -- <path>`. A changelog
+     that did not change between the two versions does not show up: if
+     nothing matches, try the next source.
 2. **Upstream git repository at the published commit**: Get the repository URL
    (`cargo info <crate>@<version>` or `npm view <name>@<version> repository.url`)
    and commit SHA (`git.sha1` in `.cargo_vcs_info.json`, or
